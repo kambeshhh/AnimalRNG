@@ -51,8 +51,13 @@ def recenter(me):
     for v in me.vertices:
         v.co.x -= (mn[0] + mx[0]) / 2; v.co.y -= (mn[1] + mx[1]) / 2; v.co.z -= mn[2]
 
+FORCE_YAW = {"VoidStag": 90.0}  # models whose PCA turn exceeds the 55° safety limit (antlers/wings widen them)
+
 def yaw_fix(ob):
     me = ob.data
+    if ob.name in FORCE_YAW:
+        me.transform(Matrix.Rotation(math.radians(FORCE_YAW[ob.name]), 4, "Z")); me.update()
+        return FORCE_YAW[ob.name]
     zs = [v.co.z for v in me.vertices]; H = max(zs)
     pts = [(v.co.x, v.co.y) for v in me.vertices if v.co.z < 0.55 * H]
     mx = sum(p[0] for p in pts) / len(pts); my = sum(p[1] for p in pts) / len(pts)

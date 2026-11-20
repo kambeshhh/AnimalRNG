@@ -41,6 +41,12 @@
                           "TextureID":  "rbxassetid://140148225078486",
                           "Weight":  1
                       },
+    "GiantPanda":  {
+                       "Group":  "Starter",
+                       "MeshId":  "rbxassetid://85742455818521",
+                       "TextureID":  "rbxassetid://76372596749978",
+                       "Weight":  1
+                   },
     "Griffin":  {
                     "Group":  "Mythical",
                     "MeshId":  "rbxassetid://111823042340059",
@@ -77,6 +83,12 @@
                    "TextureID":  "rbxassetid://103828441170928",
                    "Weight":  1
                },
+    "LavaSalamander":  {
+                           "Group":  "Apex",
+                           "MeshId":  "rbxassetid://102300839456733",
+                           "TextureID":  "rbxassetid://101121135240982",
+                           "Weight":  1
+                       },
     "Leviathan":  {
                       "Group":  "Cosmic",
                       "MeshId":  "rbxassetid://124146234919478",
@@ -149,12 +161,30 @@
                         "TextureID":  "rbxassetid://118946196592503",
                         "Weight":  1
                     },
+    "VoidStag":  {
+                     "Group":  "Cosmic",
+                     "MeshId":  "rbxassetid://77605343961882",
+                     "TextureID":  "rbxassetid://134520473906268",
+                     "Weight":  1
+                 },
     "VoltCheetah":  {
                         "Group":  "Apex",
                         "MeshId":  "rbxassetid://112413773699281",
                         "TextureID":  "rbxassetid://86888886253329",
                         "Weight":  1
                     },
+    "WildBoar":  {
+                     "Group":  "Starter",
+                     "MeshId":  "rbxassetid://123777830796037",
+                     "TextureID":  "rbxassetid://108500357787397",
+                     "Weight":  1
+                 },
+    "WoollyMammoth":  {
+                          "Group":  "Apex",
+                          "MeshId":  "rbxassetid://78278661152139",
+                          "TextureID":  "rbxassetid://85499055879564",
+                          "Weight":  1
+                      },
     "Wyvern":  {
                    "Group":  "Apex",
                    "MeshId":  "rbxassetid://114908406113971",

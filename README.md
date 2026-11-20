@@ -16,6 +16,15 @@ Roll for animals across a 28-tier rarity ladder and 8 mutations, then run around
 | `assets/manifest.json` | `ReplicatedStorage.Animals` | Creature templates: group, weight, mesh/texture asset IDs |
 | `tools/blender/` | — | Headless Blender pipeline (decimate, bake, outline, auto-rig, FBX export) |
 | `tools/export/` | — | Assembles scripts exported from Studio into `src/` |
+| `tools/studio/build_template.luau` | — | Turns an uploaded model (`ServerStorage.Import_<Name>`) into a creature template |
+
+**Adding a creature:**
+1. Generate the model (Meshy).
+2. Run `tools/blender/pipeline.py` (add the creature to `SPEC`).
+3. Upload the FBX (Open Cloud Assets API) and insert it into Studio.
+4. Run `build_template.luau`.
+
+No code changes are needed: the registry reads `ReplicatedStorage.Animals` and the model's attributes. There are currently 31 rollable creatures plus Ouroboros.
 
 **Not in git:** the map, the UI (`StarterGui.RNGHud`), the creature templates and the props. These are instances inside the place. Rojo is set to `$ignoreUnknownInstances`, so syncing code never deletes them. For a full binary snapshot, use File → Save to File as `place/AnimalRNG.rbxl`.
 
