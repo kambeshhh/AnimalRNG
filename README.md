@@ -71,3 +71,9 @@ Studio test hook (Studio only, in `ServerStorage.DevTestHook`): `Invoke(action, 
   - Set `Config.Monetization.Passes.*.Id`, including `VIPAdmin`.
 - Set `Config.Admin.DevUserIds` / `DevGroup`.
 - Consider setting `Config.Admin.AllowStudioTesters = false`.
+
+## Docs
+
+- [Game Design Document (PDF)](docs/Animal_RNG_Game_Design_Document.pdf): vision, odds and luck design, monetization and compliance, Luau architecture, art direction, roadmap
+- `docs/Animal_RNG_cover_source.html`: HTML source of the document's cover page
+
