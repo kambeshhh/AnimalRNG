@@ -22,7 +22,55 @@ function Inv.Start()
 		local data = S.DataService.Get(player)
 		if typeof(id) ~= "string" or not S.DataService.FindItem(data, id) or data.Equipped == id then return end
 		data.Equipped = id
+		S.DataService.AutoFillPack(data)
 		S.MorphService.Spawn(player, true)
+		S.DataService.Sync(player)
+	end
+	A.EquipBest = function(player)
+		local data = S.DataService.Get(player)
+		if not data or #data.Inventory == 0 then return end
+		local sorted = table.clone(data.Inventory)
+		table.sort(sorted, function(a, b) return AnimalData.ItemRarity(a) > AnimalData.ItemRarity(b) end)
+		local best = sorted[1]
+		local changedMorph = data.Equipped ~= best.Id
+		data.Equipped = best.Id
+		data.Pack = {}
+		for i = 2, math.min(#sorted, 1 + Config.Pack.MaxCompanions) do
+			table.insert(data.Pack, sorted[i].Id)
+		end
+		if changedMorph then
+			S.MorphService.Spawn(player, true)
+		elseif S.MorphService.RefreshPack then
+			S.MorphService.RefreshPack(player)
+		end
+		S.DataService.Toast(player, string.format("⚡ Equipped Best: %s + %d Pack Companions (+%s/s)!", AnimalData.ItemName(best), #data.Pack, AnimalData.Comma(S.DataService.PackCPS(data))), Config.UI.Gold)
+		S.DataService.Sync(player)
+	end
+	A.TogglePack = function(player, id)
+		local data = S.DataService.Get(player)
+		if typeof(id) ~= "string" then return end
+		local item = S.DataService.FindItem(data, id)
+		if not item or item.Id == data.Equipped then return end
+		data.Pack = data.Pack or {}
+		local idx = table.find(data.Pack, id)
+		if idx then
+			table.remove(data.Pack, idx)
+		else
+			if #data.Pack >= Config.Pack.MaxCompanions then
+				table.remove(data.Pack, 1)
+			end
+			table.insert(data.Pack, id)
+		end
+		if S.MorphService.RefreshPack then S.MorphService.RefreshPack(player) end
+		S.DataService.Sync(player)
+	end
+	A.ClaimOffline = function(player)
+		local data = S.DataService.Get(player)
+		local pending = data and (data.OfflineCoinsPending or 0) or 0
+		if pending <= 0 then return end
+		data.OfflineCoinsPending = 0
+		data.Coins += pending
+		S.DataService.Notify(player, "Banner", { Text = "💤 CLAIMED +" .. AnimalData.Comma(pending) .. " OFFLINE SANCTUARY COINS!", Color = Color3.fromRGB(120, 255, 170) })
 		S.DataService.Sync(player)
 	end
 	A.Lock = function(player, id)
@@ -39,7 +87,11 @@ function Inv.Start()
 			local item = typeof(id) == "string" and S.DataService.FindItem(data, id)
 			if item then local c = sellItem(player, data, item); if c > 0 then total += c; n += 1 end end
 		end
-		if n > 0 then S.DataService.Toast(player, string.format("Sold %d animal%s for %s Coins", n, n == 1 and "" or "s", AnimalData.Comma(total)), Config.UI.Gold) end
+		if n > 0 then
+			S.DataService.AutoFillPack(data)
+			if S.MorphService.RefreshPack then S.MorphService.RefreshPack(player) end
+			S.DataService.Toast(player, string.format("Sold %d animal%s for %s Coins", n, n == 1 and "" or "s", AnimalData.Comma(total)), Config.UI.Gold)
+		end
 		S.DataService.Sync(player)
 	end
 	A.BuySlot = function(player)
@@ -60,6 +112,8 @@ function Inv.Start()
 		local item, i = vaultFind(data, id); if not item then return end
 		if #data.Inventory >= data.Slots then S.DataService.Toast(player, "Free a slot first (sell, sacrifice or buy a slot)."); return end
 		table.remove(data.Vault, i); table.insert(data.Inventory, item)
+		S.DataService.AutoFillPack(data)
+		if S.MorphService.RefreshPack then S.MorphService.RefreshPack(player) end
 		S.DataService.Sync(player)
 	end
 	A.SellVault = function(player, id)

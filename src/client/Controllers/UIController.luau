@@ -97,15 +97,20 @@ end
 local render = {}
 render.Inventory = function(p, data)
 	local vault = data.Vault or {}
+	local pack = data.Pack or {}
+	local packCPS = data.PackCPS or 0
+	local offlinePending = data.OfflineCoinsPending or 0
 	local vid = type(sel.Inventory) == "string" and sel.Inventory:match("^V:(.+)$")
 	local vitem; if vid then for _, x in ipairs(vault) do if x.Id == vid then vitem = x end end end
 	local it; for _, x in ipairs(data.Inventory) do if x.Id == sel.Inventory then it = x end end
 	local inspect = vitem or it
 	if inspect then
-		-- inspection: exact combined odds (animal × mutation), full commas
-		p.Subtitle.Text = string.format("%s%s  •  <font color='#FFD166'>%s</font>  •  %s", vitem and "📦 " or "", AnimalData.ItemName(inspect), AnimalData.FormatRarity(itemRarity(inspect)), AnimalData.TierFor(inspect).Name)
+		local itemCPS = math.floor(Config.CompanionCPS(itemRarity(inspect)) * (data.CoinMult or 1))
+		p.Subtitle.Text = string.format("%s%s  •  <font color='#FFD166'>%s</font>  •  %s  •  <font color='#78FFAA'>+%s Coins/s in Pack</font>",
+			vitem and "📦 " or "", AnimalData.ItemName(inspect), AnimalData.FormatRarity(itemRarity(inspect)), AnimalData.TierFor(inspect).Name, comma(itemCPS))
 	else
-		p.Subtitle.Text = string.format("%d / %d slots  •  📦 Vault %d / %d  •  select an animal to inspect", #data.Inventory, data.Slots, #vault, Config.Roll.VaultSize)
+		p.Subtitle.Text = string.format("%d / %d slots  •  🐾 Pack %d/%d (<font color='#78FFAA'>+%s Coins/s</font>)  •  📦 Vault %d / %d",
+			#data.Inventory, data.Slots, #pack, Config.Pack.MaxCompanions, comma(packCPS), #vault, Config.Roll.VaultSize)
 	end
 	p.Subtitle.RichText = true
 	grid(p.Body)
@@ -113,19 +118,33 @@ render.Inventory = function(p, data)
 		itemCard(p.Body, x, -1000 + i, { badge = "📦", selected = sel.Inventory == "V:" .. x.Id, onClick = function() sel.Inventory = "V:" .. x.Id; Ctl.Render() end })
 	end
 	for i, x in ipairs(sortedInventory(data)) do
-		itemCard(p.Body, x, i, { equipped = x.Id == data.Equipped, selected = sel.Inventory == x.Id, onClick = function() sel.Inventory = x.Id; Ctl.Render() end })
+		local inPack = table.find(pack, x.Id) ~= nil
+		itemCard(p.Body, x, i, {
+			equipped = x.Id == data.Equipped,
+			badge = inPack and "🐾" or nil,
+			selected = sel.Inventory == x.Id,
+			onClick = function() sel.Inventory = x.Id; Ctl.Render() end,
+		})
 	end
 	local slotCost = Config.Inventory.SlotCosts[data.Slots - Config.Inventory.StartSlots + 1]
 	local buttons = {}
-	if vitem then
-		table.insert(buttons, { "Claim to Inventory", C(60, 170, 110), function() act("ClaimVault", vitem.Id) end, W = 190 })
-		table.insert(buttons, { "Sell (" .. comma(Config.SellValue(itemRarity(vitem))) .. ")", C(200, 90, 70), function() act("SellVault", vitem.Id) end })
-	elseif it then
-		table.insert(buttons, { "Equip", C(70, 130, 255), function() act("Equip", it.Id) end, Disabled = it.Id == data.Equipped })
-		table.insert(buttons, { it.Locked and "Unlock" or "Lock", C(90, 90, 130), function() act("Lock", it.Id) end, W = 110 })
-		table.insert(buttons, { "Sell (" .. comma(Config.SellValue(itemRarity(it))) .. ")", C(200, 90, 70), function() act("Sell", it.Id) end, Disabled = it.Locked or it.Id == data.Equipped })
+	table.insert(buttons, { "⚡ Equip Best Pack", C(240, 175, 40), function() act("EquipBest") end, W = 185 })
+	if offlinePending > 0 then
+		table.insert(buttons, { "💤 Claim +" .. NF.Short(offlinePending) .. "💰", C(60, 200, 110), function() act("ClaimOffline") end, W = 175 })
 	end
-	table.insert(buttons, { slotCost and ("+1 Slot (" .. comma(slotCost) .. ")") or "Max Slots", C(200, 150, 40), function() act("BuySlot") end, W = 190, Disabled = not slotCost })
+	if vitem then
+		table.insert(buttons, { "Claim to Inv", C(60, 170, 110), function() act("ClaimVault", vitem.Id) end, W = 150 })
+		table.insert(buttons, { "Sell (" .. NF.Short(Config.SellValue(itemRarity(vitem))) .. ")", C(200, 90, 70), function() act("SellVault", vitem.Id) end, W = 135 })
+	elseif it then
+		table.insert(buttons, { "Morph", C(70, 130, 255), function() act("Equip", it.Id) end, W = 110, Disabled = it.Id == data.Equipped })
+		if it.Id ~= data.Equipped then
+			local inPack = table.find(pack, it.Id) ~= nil
+			table.insert(buttons, { inPack and "🐾 Remove" or "🐾 Add Pack", C(130, 90, 220), function() act("TogglePack", it.Id) end, W = 135 })
+		end
+		table.insert(buttons, { it.Locked and "Unlock" or "Lock", C(90, 90, 130), function() act("Lock", it.Id) end, W = 100 })
+		table.insert(buttons, { "Sell (" .. NF.Short(Config.SellValue(itemRarity(it))) .. ")", C(200, 90, 70), function() act("Sell", it.Id) end, W = 130, Disabled = it.Locked or it.Id == data.Equipped })
+	end
+	table.insert(buttons, { slotCost and ("+1 Slot (" .. NF.Short(slotCost) .. ")") or "Max Slots", C(200, 150, 40), function() act("BuySlot") end, W = 160, Disabled = not slotCost })
 	footer(p, buttons)
 end
 
@@ -135,38 +154,90 @@ local function row(parent, order, h)
 	return f
 end
 
+local promoInput = ""
 render.Shop = function(p, data)
 	local ok, lb = pcall(function() return HttpService:JSONDecode(player:GetAttribute("LuckBreakdown") or "{}") end)
 	lb = ok and lb or {}
 	local restricted = player:GetAttribute("PaidRandomRestricted") == true or (data.PaidRandomRestricted == true)
-	p.Subtitle.Text = "Your Luck: x" .. NF.Luck(lb.Total or 1) .. "   ·   free bonuses add, paid boosts multiply (capped at x" .. Config.Monetization.PaidLuckCap .. ")"
+	local eqDie = data.EquippedDie or "Wooden"
+	local dieCfg = Config.Dice.Types[eqDie] or Config.Dice.Types.Wooden
+	p.Subtitle.Text = string.format("Total Luck: ×%s   ·   %s %s (×%s)   ·   🔱 Rebirth %d (×%.2f)",
+		NF.Luck(lb.Total or 1), dieCfg.Icon, dieCfg.Display, tostring(dieCfg.Luck), data.Rebirth or 0, Config.RebirthLuckMult(data.Rebirth or 0))
 	list(p.Body)
 	local bd = row(p.Body, 1, 114)
-	local names = { Base = "Base", Rank = "Hunter Rank", Streak = "Streak Luck", Totems = "Totems", AlphaZone = "Alpha Zone", Potion = "Potion", Weather = "Weather", Index = "Index" }
+	local names = { Base = "Base", Rank = "Rank", Streak = "Streak", Skills = "Skills", Die = "Die", Totems = "Totems", AlphaZone = "Alpha", Potion = "Potion", Weather = "Weather", Index = "Index" }
 	local addParts, multParts = {}, {}
-	for _, k in ipairs({ "Base", "Rank", "Streak", "Totems", "AlphaZone", "Potion", "Weather", "Index" }) do
+	for _, k in ipairs({ "Base", "Die", "Skills", "Rank", "Streak", "Totems", "AlphaZone", "Potion", "Weather", "Index" }) do
 		local v = lb.Add and lb.Add[k] or 0
 		if v > 0 then table.insert(addParts, string.format("%s <font color='#78FFAA'>+%s</font>", names[k], NF.Luck(v))) end
 	end
+	if (lb.RebirthMult or 1) > 1 then table.insert(multParts, string.format("Rebirth <font color='#D69EFF'>x%s</font>", NF.Luck(lb.RebirthMult))) end
 	for k, v in pairs(lb.Mult or {}) do table.insert(multParts, string.format("%s <font color='#FFD166'>x%s</font>", k, NF.Luck(v))) end
 	local streakCur = (data.Stats and data.Stats.UnluckyStreak or 0) % 100
 	local streakPct = math.floor(((lb.Add and lb.Add.Streak or 0) * 100) + 0.5)
 	UI.Label(bd, "🍀 LUCK BREAKDOWN  ·  <font color='#78FFAA'>Streak Luck +" .. streakPct .. "% (" .. streakCur .. "/100 to next +2%, max +50%)</font>", UDim2.new(1, -24, 0, 22), UDim2.fromOffset(12, 6), 16, Config.UI.Gold, UI.Display, { TextXAlignment = Enum.TextXAlignment.Left })
-	UI.Label(bd, "Free:  " .. table.concat(addParts, "  ·  "), UDim2.new(1, -24, 0, 34), UDim2.fromOffset(12, 30), 14, Config.UI.Text, Enum.Font.GothamBold, { TextXAlignment = Enum.TextXAlignment.Left })
-	UI.Label(bd, "Paid:  " .. (#multParts > 0 and table.concat(multParts, "  ·  ") or "<font color='#9AA0C0'>none active</font>") .. "   ·   <font color='#B4BEDC'>Displayed odds in Index update live while boosts are active</font>", UDim2.new(1, -24, 0, 22), UDim2.fromOffset(12, 66), 13, Config.UI.Text, Enum.Font.GothamBold, { TextXAlignment = Enum.TextXAlignment.Left })
+	UI.Label(bd, "Free:  " .. table.concat(addParts, "  ·  "), UDim2.new(1, -24, 0, 34), UDim2.fromOffset(12, 30), 13, Config.UI.Text, Enum.Font.GothamBold, { TextXAlignment = Enum.TextXAlignment.Left })
+	UI.Label(bd, "Multipliers:  " .. (#multParts > 0 and table.concat(multParts, "  ·  ") or "<font color='#9AA0C0'>none active</font>") .. "   ·   <font color='#B4BEDC'>Live effective odds update in Index</font>", UDim2.new(1, -24, 0, 22), UDim2.fromOffset(12, 66), 13, Config.UI.Text, Enum.Font.GothamBold, { TextXAlignment = Enum.TextXAlignment.Left })
 	if restricted then
-		UI.Label(bd, "ℹ️ Paid probability modifiers are restricted in your region — all luck progression is earnable free via Streak Luck, Ranks, Totems & Potions.", UDim2.new(1, -24, 0, 20), UDim2.fromOffset(12, 90), 12, C(255, 210, 120), Enum.Font.GothamBold, { TextXAlignment = Enum.TextXAlignment.Left })
+		UI.Label(bd, "ℹ️ Paid probability modifiers are restricted in your region — all luck progression is earnable free via Dice, Rebirth, Skills, Streak Luck & Potions.", UDim2.new(1, -24, 0, 20), UDim2.fromOffset(12, 90), 12, C(255, 210, 120), Enum.Font.GothamBold, { TextXAlignment = Enum.TextXAlignment.Left })
 	else
 		UI.Label(bd, "ℹ️ Probability Disclosure: Luck divides tier odds denominators (e.g. at x10 Luck, a 1-in-10,000 tier becomes 1-in-1,000). Every roll returns an animal.", UDim2.new(1, -24, 0, 20), UDim2.fromOffset(12, 90), 12, Config.UI.Muted, Enum.Font.GothamBold, { TextXAlignment = Enum.TextXAlignment.Left })
 	end
+
+	-- 2) PROMO CODES & LUCKY SPINS BAR (Slime RNG x Anime Dice)
+	local codeRow = row(p.Body, 2, 74)
+	local spins = data.LuckySpins or 0
+	local armed = data.LuckySpinArmed == true
+	UI.Label(codeRow, string.format("🎁 PROMO CODES & LUCKY SPINS  ·  <font color='#FFD166'>%d Lucky Spin%s</font>", spins, spins == 1 and "" or "s"), UDim2.fromOffset(360, 24), UDim2.fromOffset(14, 6), 16, C(40, 210, 255), UI.Display, { TextXAlignment = Enum.TextXAlignment.Left })
+	UI.Label(codeRow, "Try codes: OUROBOROS, ANIMALRNG, SLIMEDICE, RELEASE, UPDATE1", UDim2.fromOffset(360, 18), UDim2.fromOffset(14, 32), 12, Config.UI.Muted, Enum.Font.GothamBold, { TextXAlignment = Enum.TextXAlignment.Left })
+	local tb = Instance.new("TextBox"); tb.Size = UDim2.fromOffset(165, 42); tb.Position = UDim2.new(1, -460, 0.5, -21)
+	tb.BackgroundColor3 = C(14, 18, 34); tb.TextColor3 = Color3.new(1, 1, 1); tb.PlaceholderText = "ENTER CODE..."; tb.Text = promoInput
+	tb.Font = Enum.Font.GothamBlack; tb.TextSize = 14; tb.ClearTextOnFocus = false; Instance.new("UICorner", tb).CornerRadius = UDim.new(0, 10)
+	local tbs = Instance.new("UIStroke"); tbs.Color = C(40, 210, 255); tbs.Thickness = 2; tbs.ApplyStrokeMode = Enum.ApplyStrokeMode.Border; tbs.Parent = tb
+	tb.FocusLost:Connect(function() promoInput = tb.Text end)
+	tb.Parent = codeRow
+	UI.Button(codeRow, "Redeem", UDim2.fromOffset(120, 44), C(40, 180, 240), function()
+		promoInput = tb.Text
+		act("RedeemCode", tb.Text)
+	end, { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -162, 0.5, 0) })
+	UI.Button(codeRow, armed and "🎰 ARMED!" or ("🎰 Spin (" .. spins .. ")"), UDim2.fromOffset(140, 44), armed and C(255, 190, 40) or (spins > 0 and C(170, 90, 245) or C(50, 56, 84)), function()
+		act("ArmLuckySpin")
+	end, { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -14, 0.5, 0) })
+
+	-- 3) ANIME DICE: 8-TIER 3D DICE & RELIC FORGE (F2P Coin & Material progression)
+	local diceHeader = row(p.Body, 3, 38)
+	UI.Label(diceHeader, "🎲 3D DICE & RELIC FORGE  —  Throws in 3D on every roll & multiplies F2P Luck!", UDim2.new(1, -24, 1, 0), UDim2.fromOffset(14, 0), 17, Config.UI.Gold, UI.Display, { TextXAlignment = Enum.TextXAlignment.Left })
+	local order = 4
+	local ownedDice = data.Dice or { Wooden = true }
+	for _, dKey in ipairs(Config.Dice.Order) do
+		order += 1
+		local d = Config.Dice.Types[dKey]
+		local hasDie = ownedDice[dKey] == true
+		local isEq = eqDie == dKey
+		local f = row(p.Body, order, 72)
+		f.Stroke.Color = isEq and d.Color or C(8, 10, 20)
+		UI.Label(f, string.format("%s  %s  <font color='#%s' size='14'>[%s · ×%s Luck]</font>", d.Icon, d.Display, d.Color:ToHex(), d.Rarity:upper(), tostring(d.Luck)),
+			UDim2.new(1, -200, 0, 28), UDim2.fromOffset(14, 8), 19, Config.UI.Text, UI.Display, { TextXAlignment = Enum.TextXAlignment.Left })
+		local cStr = hasDie and "<font color='#78FFAA'>Unlocked — throws physical 3D " .. d.Display .. " on every roll</font>" or ("Cost:  " .. costText({ Coins = d.Coins, Materials = d.Materials }, data))
+		UI.Label(f, cStr, UDim2.new(1, -200, 0, 24), UDim2.fromOffset(14, 38), 13, Config.UI.Muted, Enum.Font.GothamBold, { TextXAlignment = Enum.TextXAlignment.Left })
+		local bText = isEq and "EQUIPPED" or (hasDie and "EQUIP" or ("BUY (" .. (d.Coins > 0 and NF.Short(d.Coins) or "FREE") .. ")"))
+		local bCol = isEq and C(40, 175, 235) or (hasDie and C(60, 195, 110) or C(230, 160, 40))
+		UI.Button(f, bText, UDim2.fromOffset(160, 46), bCol, function()
+			if hasDie then act("EquipDie", dKey) else act("BuyDie", dKey) end
+		end, { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -14, 0.5, 0) })
+	end
+
+	-- 4) ROBUX PASSES & BOOSTS
+	order += 1
+	local passHeader = row(p.Body, order, 38)
+	UI.Label(passHeader, "💎 GAME PASSES & SERVER BOOSTS", UDim2.new(1, -24, 1, 0), UDim2.fromOffset(14, 0), 17, C(180, 130, 255), UI.Display, { TextXAlignment = Enum.TextXAlignment.Left })
 	local M = Config.Monetization
-	local order = 10
 	local function item(kind, key, def, owned, extra)
 		order += 1
 		local isRestrItem = restricted and def.RandomModifier == true
 		local f = row(p.Body, order, 74)
 		UI.Label(f, def.Icon .. "  " .. def.Display, UDim2.new(1, -190, 0, 28), UDim2.fromOffset(14, 8), 20, Config.UI.Text, UI.Display, { TextXAlignment = Enum.TextXAlignment.Left })
-		local desc = isRestrItem and "Restricted in your region — earn free Luck via Streak Luck, Ranks, Totems & Altar Potions"
+		local desc = isRestrItem and "Restricted in your region — earn free Luck via Dice, Rebirth, Skills & Potions"
 			or ((def.Desc or (def.Server and "Boosts EVERY player in the server" or "Stacks with your free luck")) .. (extra or ""))
 		UI.Label(f, desc, UDim2.new(1, -190, 0, 28), UDim2.fromOffset(14, 38), 13, isRestrItem and C(255, 195, 110) or Config.UI.Muted, Enum.Font.GothamBold, { TextXAlignment = Enum.TextXAlignment.Left })
 		local btnLabel = owned and "OWNED" or (isRestrItem and "FREE PATH" or ("R$ " .. def.Robux))
@@ -452,13 +523,65 @@ end
 
 render.Rank = function(p, data)
 	local cur = Config.Ranks[data.Rank]
-	p.Subtitle.Text = string.format("Rank %d / %d  ·  %s", data.Rank, #Config.Ranks, cur.Name)
+	local reb = data.Rebirth or 0
+	local rebCost = Config.RebirthCost(reb)
+	local curLuckM = Config.RebirthLuckMult(reb)
+	local nextLuckM = Config.RebirthLuckMult(reb + 1)
+	local curCoinM = Config.RebirthCoinMult(reb)
+	local nextCoinM = Config.RebirthCoinMult(reb + 1)
+	p.Subtitle.Text = string.format("🔱 Rebirth %d (×%.2f Luck · ×%.2f Coins)   ·   Hunter Rank %d / %d (%s)",
+		reb, curLuckM, curCoinM, data.Rank, #Config.Ranks, cur.Name)
 	list(p.Body)
+
+	-- 1) SLIME RNG ESSENCE REBIRTH PORTAL CARD
+	local rbCard = Instance.new("Frame"); rbCard.Size = UDim2.new(1, -6, 0, 108); rbCard.LayoutOrder = 1
+	UI.Glass(rbCard, 16, C(210, 130, 255), Config.UI.Gold)
+	rbCard.Fill.Color = ColorSequence.new(C(52, 32, 88), C(22, 18, 46))
+	rbCard.Parent = p.Body
+	UI.Label(rbCard, string.format("🔱 ESSENCE REBIRTH %d  ➔  REBIRTH %d", reb, reb + 1), UDim2.new(1, -210, 0, 26), UDim2.fromOffset(14, 8), 19, Config.UI.Gold, UI.Display, { TextXAlignment = Enum.TextXAlignment.Left })
+	UI.Label(rbCard, string.format("Permanent Multipliers:  <font color='#78FFAA'>Luck ×%.2f ➔ ×%.2f</font>   ·   <font color='#FFD166'>Coins ×%.2f ➔ ×%.2f</font>", curLuckM, nextLuckM, curCoinM, nextCoinM),
+		UDim2.new(1, -210, 0, 22), UDim2.fromOffset(14, 36), 14, Config.UI.Text, Enum.Font.GothamBold, { TextXAlignment = Enum.TextXAlignment.Left })
+	UI.Label(rbCard, string.format("✓ Keeps ALL Animals, Index, 3D Dice, Totems & Skills (Resets Coins only)   ·   Cost: <font color='#%s'>✨ %s / %s Essence</font>",
+		(data.Essence or 0) >= rebCost and "78FFAA" or "FF7090", comma(data.Essence or 0), comma(rebCost)),
+		UDim2.new(1, -210, 0, 20), UDim2.fromOffset(14, 62), 12, Config.UI.Muted, Enum.Font.GothamBold, { TextXAlignment = Enum.TextXAlignment.Left })
+	local canReb = (data.Essence or 0) >= rebCost
+	UI.Button(rbCard, "🔱 REBIRTH (" .. NF.Short(rebCost) .. "✨)", UDim2.fromOffset(180, 56), canReb and C(170, 80, 245) or C(50, 54, 82), function()
+		act("Rebirth")
+	end, { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -14, 0.5, 0) })
+
+	-- 2) SLIME RNG BRANCHING COIN SKILL TREE
+	local skHeader = row(p.Body, 2, 36)
+	UI.Label(skHeader, "⚡ COIN SKILL TREE  —  Permanent upgrades that persist across every Rebirth!", UDim2.new(1, -24, 1, 0), UDim2.fromOffset(14, 0), 16, C(120, 255, 170), UI.Display, { TextXAlignment = Enum.TextXAlignment.Left })
+	local skills = data.Skills or {}
+	local order = 2
+	for _, sKey in ipairs(Config.Skills.Order) do
+		order += 1
+		local node = Config.Skills.Nodes[sKey]
+		local lv = skills[sKey] or 0
+		local maxed = lv >= node.Max
+		local cost = Config.SkillCost(sKey, lv)
+		local sf = row(p.Body, order, 68)
+		sf.Stroke.Color = maxed and C(120, 255, 170) or C(8, 10, 20)
+		UI.Label(sf, string.format("%s  %s   <font color='#FFD166'>[Lv. %d / %d]</font>", node.Icon, node.Display, lv, node.Max),
+			UDim2.new(1, -195, 0, 26), UDim2.fromOffset(14, 8), 18, Config.UI.Text, UI.Display, { TextXAlignment = Enum.TextXAlignment.Left })
+		UI.Label(sf, node.Desc, UDim2.new(1, -195, 0, 20), UDim2.fromOffset(14, 36), 13, Config.UI.Muted, Enum.Font.GothamBold, { TextXAlignment = Enum.TextXAlignment.Left })
+		local bTxt = maxed and "MAXED ✓" or ("💰 " .. NF.Short(cost))
+		local bCol = maxed and C(50, 140, 90) or (data.Coins >= cost and C(60, 195, 110) or C(55, 62, 90))
+		UI.Button(sf, bTxt, UDim2.fromOffset(155, 44), bCol, function()
+			if not maxed then act("BuySkill", sKey) end
+		end, { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -14, 0.5, 0) })
+	end
+
+	-- 3) HUNTER RANKS (1-10)
+	order += 1
+	local rkHeader = row(p.Body, order, 36)
+	UI.Label(rkHeader, "🏆 HUNTER RANKS (1 – 10)", UDim2.new(1, -24, 1, 0), UDim2.fromOffset(14, 0), 16, Config.UI.Gold, UI.Display, { TextXAlignment = Enum.TextXAlignment.Left })
 	local indexCount = 0; for _ in pairs(data.Index) do indexCount += 1 end
 	for i, r in ipairs(Config.Ranks) do
+		order += 1
 		local done = data.Rank >= i
 		local isNext = i == data.Rank + 1
-		local f = Instance.new("Frame"); f.Size = UDim2.new(1, -6, 0, isNext and 78 or 56); f.LayoutOrder = i
+		local f = Instance.new("Frame"); f.Size = UDim2.new(1, -6, 0, isNext and 78 or 56); f.LayoutOrder = order
 		UI.Glass(f, 14, done and C(120, 255, 170) or (isNext and Config.UI.Gold or C(80, 90, 130)), done and C(60, 160, 110) or C(90, 80, 160))
 		f.BackgroundColor3 = isNext and C(36, 44, 74) or C(22, 31, 56)
 		local num = UI.Label(f, done and "✓" or tostring(i), UDim2.fromOffset(34, 34), UDim2.fromOffset(12, 11), 16, done and C(20, 40, 30) or Config.UI.Text, Enum.Font.GothamBlack, { BackgroundTransparency = 0, BackgroundColor3 = done and C(120, 255, 170) or C(52, 60, 92) })
@@ -524,12 +647,14 @@ render.Altar = function(p, data)
 			onClick = function() if usable then sel.Altar[it.Id] = not sel.Altar[it.Id] or nil; Ctl.Render() end end })
 	end
 	local elixir = Config.Potions.Elixir
+	local rebCost = Config.RebirthCost(data.Rebirth or 0)
 	footer(p, {
 		{ "Sacrifice (+" .. comma(gain) .. ")", C(150, 70, 230), function()
 			local ids = {}; for id in pairs(sel.Altar) do table.insert(ids, id) end
-			sel.Altar = {}; act("Sacrifice", ids) end, W = 190, Disabled = gain == 0 },
-		{ "Lucky Potion (750💰)", C(60, 170, 110), function() act("BrewLucky") end, W = 190 },
-		{ data.Rank >= elixir.RankRequired and ("Eclipse Elixir (" .. comma(elixir.EssenceCost) .. "✨)") or ("🔒 Elixir: Rank " .. elixir.RankRequired), C(220, 160, 40), function() act("BrewElixir") end, W = 210,
+			sel.Altar = {}; act("Sacrifice", ids) end, W = 185, Disabled = gain == 0 },
+		{ "🔱 Rebirth (" .. NF.Short(rebCost) .. "✨)", C(180, 90, 250), function() act("Rebirth") end, W = 185, Disabled = (data.Essence or 0) < rebCost },
+		{ "Lucky Potion (750💰)", C(60, 170, 110), function() act("BrewLucky") end, W = 180 },
+		{ data.Rank >= elixir.RankRequired and ("Eclipse Elixir (" .. comma(elixir.EssenceCost) .. "✨)") or ("🔒 Elixir: Rank " .. elixir.RankRequired), C(220, 160, 40), function() act("BrewElixir") end, W = 195,
 			Disabled = data.Rank < elixir.RankRequired or data.Essence < elixir.EssenceCost },
 	})
 end
@@ -609,19 +734,24 @@ function Ctl.Render()
 end
 
 local function hud(data)
-	gui.Wallet.Coins.Text = "💰 " .. (data.Coins >= 1e5 and NF.Short(data.Coins) or comma(data.Coins))
+	local cps = data.PackCPS or 0
+	local cpsTag = cps > 0 and string.format(" (+%s/s)", NF.Short(cps)) or ""
+	gui.Wallet.Coins.Text = "💰 " .. (data.Coins >= 1e5 and NF.Short(data.Coins) or comma(data.Coins)) .. cpsTag
 	local m = data.Materials
 	local chips = gui.Wallet.Materials
 	chips.FrostCore.Text = "❄️ " .. (m.FrostCore or 0)
 	chips.MagmaHeart.Text = "🔥 " .. (m.MagmaHeart or 0)
 	chips.EclipseDust.Text = "🌑 " .. (m.EclipseDust or 0)
-	chips.Essence.Text = "✨ " .. ((data.Essence or 0) >= 10000 and string.format("%.0fK", data.Essence / 1000) or comma(data.Essence or 0))
+	local rebTag = (data.Rebirth or 0) > 0 and (" · 🔱" .. data.Rebirth) or ""
+	chips.Essence.Text = "✨ " .. ((data.Essence or 0) >= 10000 and string.format("%.0fK", data.Essence / 1000) or comma(data.Essence or 0)) .. rebTag
 	local elapsed = (workspace:GetServerTimeNow() - (data.SessionStart or 0)) / 60
 	local giftReady = false
 	for i, g in ipairs(Config.PlaytimeGifts) do if elapsed >= g.Minutes and not (data.GiftsClaimed and data.GiftsClaimed[i]) then giftReady = true end end
 	gui.IconBar.GiftsButton.Dot.Visible = giftReady
 	gui.IconBar.PotionsButton.Dot.Visible = (data.Potions.Lucky or 0) + (data.Potions.Elixir or 0) > 0
-	gui.IconBar.InventoryButton.Dot.Visible = data.Vault ~= nil and #data.Vault > 0
+	gui.IconBar.InventoryButton.Dot.Visible = (data.Vault ~= nil and #data.Vault > 0) or ((data.OfflineCoinsPending or 0) > 0)
+	gui.IconBar.RankButton.Dot.Visible = (data.Essence or 0) >= Config.RebirthCost(data.Rebirth or 0)
+	gui.IconBar.ShopButton.Dot.Visible = (data.LuckySpins or 0) > 0
 	local cm = data.Settings and data.Settings.CutsceneMin
 	local skip = gui.RollDock.Chips:FindFirstChild("Skip")
 	if skip and cm then local t = AnimalData.Tiers[cm]; skip.Value.Text = "⏭ Skip < T" .. cm .. (t and (" " .. t.Name) or "") end
@@ -636,7 +766,9 @@ function Ctl.RefreshDock()
 	gui.IconBar.Size = UDim2.fromOffset(148, math.ceil(n / 2) * 80)
 end
 
+local lastPackFloat = 0
 function Ctl.Start()
+	local Cut = require(script.Parent.CutsceneController)
 	UI.JuiceAll(gui)
 	-- responsive: scale the whole HUD with the viewport (phones -> ~0.6, 1080p -> 1.0+)
 	local cam = workspace.CurrentCamera
@@ -653,7 +785,7 @@ function Ctl.Start()
 	gui.Backdrop.Activated:Connect(function() if open then Ctl.Open(open) end end)
 	local chips = gui.RollDock.Chips
 	if chips:FindFirstChild("Skip") then chips.Skip.Activated:Connect(function() Ctl.Open("Settings") end) end
-	if chips.Luck:FindFirstChild("Hit") then chips.Luck.Hit.Activated:Connect(function() Ctl.Open("Potions") end) end
+	if chips.Luck:FindFirstChild("Hit") then chips.Luck.Hit.Activated:Connect(function() Ctl.Open("Shop") end) end
 	player:GetAttributeChangedSignal("IsDevAdmin"):Connect(function() Ctl.RefreshDock(); if open == "Admin" then Ctl.Render() end end)
 	player:GetAttributeChangedSignal("IsVIPAdmin"):Connect(function() if open == "VIP" then Ctl.Render() end end)
 	task.spawn(function() while true do task.wait(1); if open == "VIP" or open == "Admin" then Ctl.Render() end end end)
@@ -664,6 +796,18 @@ function Ctl.Start()
 		elseif kind == "Banner" then UI.Banner(p.Text, p.Color, 4)
 		elseif kind == "Float" then UI.Float(p.Text, p.Color)
 		elseif kind == "OpenStation" then if open ~= p then Ctl.Open(p) end
+		elseif kind == "PowerUpFX" then
+			if Cut and Cut.PowerUpFX then task.spawn(Cut.PowerUpFX, p) end
+		elseif kind == "PackIncome" then
+			if State.Data then
+				State.Data.Coins = p.Coins
+				State.Data.PackCPS = p.CPS
+				hud(State.Data)
+			end
+			if os.clock() - lastPackFloat >= 3.8 and not State.CutsceneBusy then
+				lastPackFloat = os.clock()
+				UI.Float("🐾 +" .. NF.Short(p.Gain) .. " 💰", C(120, 255, 170))
+			end
 		elseif kind == "ForgeResult" then
 			if p.Success then UI.Banner("FORGE SUCCESS! " .. p.Name:upper() .. " (" .. AnimalData.FormatRarity(p.Rarity) .. ")", AnimalData.Mutations[p.Mutation].Color, 5); UI.Sound("Reveal", 0.8, 0.9)
 			else UI.Toast("The forge fizzled... your animal is safe, the duplicate and materials were consumed.", C(255, 140, 140)); UI.Sound("Fail", 0.6, 0.9) end
@@ -677,7 +821,7 @@ function Ctl.Start()
 			end
 		end
 	end)
-	-- live HUD: weather timer, luck pill, alpha badge, gift timers
+	-- live HUD: weather timer, luck pill, equipped die badge, alpha badge, gift timers
 	local lastSec = -1
 	RunService.RenderStepped:Connect(function()
 		local w = RS:GetAttribute("Weather") or "Sunny"
@@ -687,10 +831,13 @@ function Ctl.Start()
 		pill.Icon.Text = info.Icon; pill.WeatherName.Text = info.Display
 		pill.Timer.Text = string.format("%d:%02d", left // 60, math.floor(left % 60))
 		local luck = player:GetAttribute("Luck") or 1
+		local dieKey = player:GetAttribute("EquippedDie") or (State.Data and State.Data.EquippedDie) or "Wooden"
+		local dieCfg = Config.Dice.Types[dieKey] or Config.Dice.Types.Wooden
+		local spinTag = (State.Data and State.Data.LuckySpinArmed) and " · 🎰SPIN" or ""
 		local bName, bMult = next(info.Boost)
 		local bAnimal = bName and AnimalData.Animals[bName]
 		local boost = (bAnimal and bMult) and string.format("  •  %dx %s", bMult, bAnimal.Display:match("(%S+)$") or bAnimal.Display) or ""
-		gui.RollDock.Chips.Luck.Value.Text = "🍀 Luck ×" .. NF.Luck(luck)
+		gui.RollDock.Chips.Luck.Value.Text = string.format("%s %s · 🍀 ×%s%s", dieCfg.Icon, dieCfg.Display:gsub(" Die$", ""), NF.Luck(luck), spinTag)
 		gui.RollDock.Chips.Weather.Value.Text = string.format("%s %s%s", info.Icon, info.Display, boost)
 		gui.TopCenter.AlphaBadge.Visible = player:GetAttribute("InAlpha") == true
 		local sec = math.floor(os.clock())

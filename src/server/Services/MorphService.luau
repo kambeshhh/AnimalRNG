@@ -110,9 +110,79 @@ local function applyShowcase(model, scale)
 	model:SetAttribute("Showcase", true); model:SetAttribute("HaloRadius", radius); model:SetAttribute("HaloHeight", height - root.Size.Y / 2)
 end
 
+-- Sol's RNG-style Sacred Floor Sigil & Orbiting Energy Spheres for Tier 8+ (Exalted -> Unattainable)
+local function applyTierSigil(model, item)
+	local tierIdx = AnimalData.ItemTierIndex(item)
+	if tierIdx < 8 then return end
+	local root, mesh = model.PrimaryPart, model:FindFirstChild("AnimalMesh")
+	if not root then return end
+	local tier = AnimalData.Tiers[tierIdx]
+	local col = tier.Color
+	local rainbow = tierIdx >= 25 or item.Mutation == "Prismatic" or item.Mutation == "Singularity"
+	local seq = rainbow and RAINBOW or ColorSequence.new(col, col:Lerp(Color3.new(1, 1, 1), 0.55))
+	local floorY = -(root.Size.Y / 2) - ((model:FindFirstChildOfClass("Humanoid") and model:FindFirstChildOfClass("Humanoid").HipHeight or 2)) + 0.15
+	local baseRadius = math.clamp((mesh and math.max(mesh.Size.X, mesh.Size.Z) or 6) * 0.65, 4.5, 16)
+	local ringCount = (tierIdx >= 25 and 3) or (tierIdx >= 16 and 2) or 1
+	local sigilFolder = Instance.new("Folder"); sigilFolder.Name = "SacredSigil"; sigilFolder.Parent = root
+
+	for r = 1, ringCount do
+		local rad = baseRadius * (0.7 + r * 0.35)
+		local nodes = 6 + r * 2
+		local ringAtts = {}
+		for i = 1, nodes do
+			local a = (i - 1) / nodes * math.pi * 2
+			local att = Instance.new("Attachment"); att.Name = string.format("Sigil_%d_%d", r, i)
+			att.Position = Vector3.new(math.cos(a) * rad, floorY, math.sin(a) * rad)
+			att:SetAttribute("SigilRing", r)
+			att:SetAttribute("SigilAngle", a)
+			att:SetAttribute("SigilRadius", rad)
+			att:SetAttribute("SigilY", floorY)
+			att:SetAttribute("SigilSpeed", (r % 2 == 1 and 1 or -1) * (0.55 + r * 0.2))
+			att.Parent = root
+			if i % 2 == 1 then
+				local sp = emitter(att, col, 4 + r * 2, 0.38, 1.2)
+				sp.Color = seq
+			end
+			ringAtts[i] = att
+		end
+		-- Outer polygon ring beams
+		for i = 1, nodes do
+			local bm = Instance.new("Beam")
+			bm.Name = "SigilRingBeam"
+			bm.Attachment0 = ringAtts[i]
+			bm.Attachment1 = ringAtts[i % nodes + 1]
+			bm.Color = seq
+			bm.LightEmission = 1
+			bm.FaceCamera = false
+			bm.Width0 = 0.35 + r * 0.08
+			bm.Width1 = 0.35 + r * 0.08
+			bm.Transparency = NumberSequence.new(0.15)
+			bm.Parent = sigilFolder
+		end
+		-- Sacred geometry inner star chords for Tier 13+
+		if tierIdx >= 13 and r == ringCount then
+			local step = math.max(2, math.floor(nodes / 3))
+			for i = 1, nodes do
+				local bm = Instance.new("Beam")
+				bm.Name = "SigilStarChord"
+				bm.Attachment0 = ringAtts[i]
+				bm.Attachment1 = ringAtts[(i + step - 1) % nodes + 1]
+				bm.Color = seq
+				bm.LightEmission = 1
+				bm.Width0 = 0.22
+				bm.Width1 = 0.22
+				bm.Transparency = NumberSequence.new(0.32)
+				bm.Parent = sigilFolder
+			end
+		end
+	end
+	model:SetAttribute("HasSigil", true)
+end
+
 local function applyMutation(model, item)
 	local cfg = AnimalData.Animals[item.Animal]
 	if cfg and cfg.ShowcaseScale then applyShowcase(model, cfg.ShowcaseScale) end
+	applyTierSigil(model, item)
 	local mesh, root = model:FindFirstChild("AnimalMesh"), model.PrimaryPart
 	local fx = MUTATION_FX[item.Mutation or "Normal"]
 	if fx and mesh then fx(model, mesh, root) end
@@ -131,18 +201,27 @@ local function chip(parent, name, text, textColor, bg, stroke, height, order, fo
 	return f
 end
 
+local function fullTitle(player)
+	local t = player:GetAttribute("Title") or ""
+	local reb = player:GetAttribute("Rebirth") or 0
+	if reb > 0 then
+		local rTag = "🔱 Rebirth " .. reb
+		return t ~= "" and (t .. "  •  " .. rTag) or rTag
+	end
+	return t
+end
+
 -- Overhead tag: [crown chip] / name / [tier chip]. Sized in studs so it shrinks with distance and never stacks on top of other tags.
 local function makeTag(player, model, item)
 	local head = model:FindFirstChild("Head"); if not head then return end
 	local mesh = model:FindFirstChild("AnimalMesh")
-	local root = model.PrimaryPart
 	local topY = mesh and (mesh.Position.Y + mesh.Size.Y / 2) or (head.Position.Y + 1)
 	local tag = Instance.new("BillboardGui"); tag.Name = "Tag"; tag.LightInfluence = 0; tag.MaxDistance = 70; tag.AlwaysOnTop = false
 	tag.Size = UDim2.fromScale(7, 2.5); tag.SizeOffset = Vector2.new(0, 0.5)
 	tag.StudsOffsetWorldSpace = Vector3.new(0, topY - head.Position.Y + 0.6, 0)
 	local list = Instance.new("UIListLayout"); list.HorizontalAlignment = Enum.HorizontalAlignment.Center; list.VerticalAlignment = Enum.VerticalAlignment.Bottom
 	list.SortOrder = Enum.SortOrder.LayoutOrder; list.Padding = UDim.new(0.04, 0); list.Parent = tag
-	local title = player:GetAttribute("Title") or ""
+	local title = fullTitle(player)
 	local crown = chip(tag, "Title", title, C(40, 26, 6), C(255, 205, 90), C(255, 240, 180), 0.24, 1, Enum.Font.GothamBlack)
 	crown.Visible = title ~= ""
 	local name = chip(tag, "PlayerName", player.DisplayName, C(255, 255, 255), nil, nil, 0.3, 2, Enum.Font.GothamBlack)
@@ -157,8 +236,63 @@ function MorphService.RefreshTitle(player)
 	local char = player.Character
 	local tag = char and char:FindFirstChild("Head") and char.Head:FindFirstChild("Tag")
 	if tag and tag:FindFirstChild("Title") then
-		local t = player:GetAttribute("Title") or ""
+		local t = fullTitle(player)
 		tag.Title.Label.Text = t; tag.Title.Visible = t ~= ""
+	end
+end
+
+-- Slime RNG x Anime Dice: Spawn 3D active companion models inside char.Companions so AnimationController can bounce & follow smoothly
+function MorphService.RefreshPack(player)
+	local char = player.Character
+	local root = char and char.PrimaryPart
+	local data = S.DataService.Get(player)
+	if not char or not root or not data then return end
+	local old = char:FindFirstChild("Companions")
+	if old then old:Destroy() end
+	if not data.Pack or #data.Pack == 0 then return end
+	local folder = Instance.new("Folder"); folder.Name = "Companions"; folder.Parent = char
+	local offsets = {
+		Vector3.new(-6.2, 0, 3.8),
+		Vector3.new(6.2, 0, 3.8),
+		Vector3.new(0, 0, 7.2),
+	}
+	for idx, itemId in ipairs(data.Pack) do
+		if idx > Config.Pack.MaxCompanions then break end
+		local it = S.DataService.FindItem(data, itemId)
+		if it and it.Id ~= data.Equipped then
+			local tpl = Templates:FindFirstChild(AnimalData.TemplateName(it.Animal)) or Templates:FindFirstChild("MeadowRabbit")
+			if tpl then
+				local comp = tpl:Clone()
+				comp.Name = "Companion_" .. idx
+				for _, d in ipairs(comp:GetDescendants()) do
+					if d:IsA("Humanoid") or d:IsA("LuaSourceContainer") or d:IsA("WeldConstraint") then
+						d:Destroy()
+					elseif d:IsA("BasePart") then
+						d.Anchored = true; d.CanCollide = false; d.CanQuery = false; d.CanTouch = false; d.Massless = true
+					end
+				end
+				pcall(function() comp:ScaleTo(comp:GetScale() * 0.48) end)
+				local mesh = comp:FindFirstChild("AnimalMesh")
+				local fx = MUTATION_FX[it.Mutation or "Normal"]
+				if fx and mesh and comp.PrimaryPart then pcall(fx, comp, mesh, comp.PrimaryPart) end
+				local tier = AnimalData.TierFor(it)
+				local cps = math.floor(Config.CompanionCPS(AnimalData.ItemRarity(it)) * S.DataService.CoinMult(data))
+				if mesh then
+					local bb = Instance.new("BillboardGui"); bb.Name = "PackTag"; bb.Size = UDim2.fromScale(4.5, 1.1); bb.MaxDistance = 45; bb.LightInfluence = 0
+					bb.StudsOffsetWorldSpace = Vector3.new(0, mesh.Size.Y * 0.65 + 0.5, 0); bb.Parent = mesh
+					local lbl = Instance.new("TextLabel"); lbl.BackgroundTransparency = 1; lbl.Size = UDim2.fromScale(1, 1); lbl.Font = Enum.Font.FredokaOne; lbl.TextScaled = true; lbl.RichText = true
+					lbl.Text = string.format("%s\n<font color='#78FFAA'>+%s/s</font>", AnimalData.ItemName(it), AnimalData.FormatRarityShort(cps):gsub("^1 in ", ""))
+					lbl.TextColor3 = tier.Color; lbl.Parent = bb
+					local st = Instance.new("UIStroke"); st.Thickness = 1.8; st.Color = C(8, 10, 20); st.Parent = lbl
+				end
+				local off = offsets[idx] or Vector3.new((idx - 2) * 5, 0, 5)
+				comp:SetAttribute("OffsetX", off.X)
+				comp:SetAttribute("OffsetZ", off.Z)
+				comp:SetAttribute("Phase", idx * 1.35)
+				comp:PivotTo(root.CFrame * CFrame.new(off))
+				comp.Parent = folder
+			end
+		end
 	end
 end
 
@@ -216,6 +350,7 @@ function MorphService.Spawn(player, keepPosition)
 	if old and old ~= model then old:Destroy() end
 	pcall(function() model.PrimaryPart:SetNetworkOwner(player) end)
 	makeTag(player, model, item)
+	MorphService.RefreshPack(player)
 	local data = S.DataService.Get(player)
 	if data and data.ElixirArmed then MorphService.SetElixirAura(player, true) end
 	hum.Died:Connect(function()
@@ -228,6 +363,7 @@ end
 function MorphService.Start()
 	Players.PlayerAdded:Connect(function(p)
 		p:GetAttributeChangedSignal("Title"):Connect(function() MorphService.RefreshTitle(p) end)
+		p:GetAttributeChangedSignal("Rebirth"):Connect(function() MorphService.RefreshTitle(p) end)
 	end)
 	-- fall safety: anyone dropping into the ocean returns to spawn
 	task.spawn(function()

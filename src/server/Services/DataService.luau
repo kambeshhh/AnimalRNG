@@ -22,8 +22,16 @@ local function default()
 		Materials = { FrostCore = 0, MagmaHeart = 0, EclipseDust = 0 },
 		Totems = {}, EquippedTotems = {}, Potions = { Lucky = 0, Elixir = 0 }, LuckyUntil = 0, ElixirArmed = false,
 		Essence = 0, Rank = 1, Index = {}, NextId = 1,
-		Stats = { Rolls = 0, RarestPull = 0, RarestName = "", AlphaTime = 0, Crafts = 0, Forges = 0, Sacrifices = 0, BonusCounter = 0, UnluckyStreak = 0, StreakStacks = 0 },
+		Stats = { Rolls = 0, RarestPull = 0, RarestName = "", AlphaTime = 0, Crafts = 0, Forges = 0, Sacrifices = 0, BonusCounter = 0, UnluckyStreak = 0, StreakStacks = 0, Rebirths = 0 },
 		Vault = {}, Settings = { CutsceneMin = 4, ReduceOthersFX = false }, LuckBoostUntil = 0, Purchases = {}, StudioPasses = {},
+		-- Fusion systems: Anime Dice ladder, Slime RNG Rebirth & Skill Tree, Active Companion Pack, Promo Codes & Lucky Spins
+		Dice = { Wooden = true }, EquippedDie = "Wooden",
+		Rebirth = 0,
+		Skills = { CoinYield = 0, RollSpeed = 0, SuperLuck = 0, OfflineCap = 0, BonusCycle = 0 },
+		Pack = {}, -- up to 3 companion item Ids
+		LuckySpins = 1, LuckySpinArmed = false,
+		RedeemedCodes = {},
+		LastSeenOs = 0, OfflineCoinsPending = 0,
 	}
 end
 
@@ -70,7 +78,43 @@ function DataService.IndexCount(data)
 	for _ in pairs(data.Index) do n += 1 end
 	return n
 end
-function DataService.CoinMult(data) return 1 + DataService.IndexCount(data) * 0.01 end
+function DataService.CoinMult(data)
+	local indexMult = 1 + DataService.IndexCount(data) * 0.01
+	local skillMult = 1 + ((data.Skills and data.Skills.CoinYield or 0) * Config.Skills.Nodes.CoinYield.Step)
+	local rebirthMult = Config.RebirthCoinMult(data.Rebirth or 0)
+	return indexMult * skillMult * rebirthMult
+end
+
+function DataService.PackCPS(data)
+	local raw = 0
+	for _, id in ipairs(data.Pack or {}) do
+		local it = DataService.FindItem(data, id)
+		if it and it.Id ~= data.Equipped then
+			raw += Config.CompanionCPS(AnimalData.ItemRarity(it))
+		end
+	end
+	return math.floor(raw * DataService.CoinMult(data))
+end
+
+function DataService.AutoFillPack(data)
+	data.Pack = data.Pack or {}
+	for i = #data.Pack, 1, -1 do
+		local it = DataService.FindItem(data, data.Pack[i])
+		if not it or it.Id == data.Equipped then table.remove(data.Pack, i) end
+	end
+	if #data.Pack >= Config.Pack.MaxCompanions then return end
+	local candidates = {}
+	for _, it in ipairs(data.Inventory) do
+		if it.Id ~= data.Equipped and not table.find(data.Pack, it.Id) then
+			table.insert(candidates, it)
+		end
+	end
+	table.sort(candidates, function(a, b) return AnimalData.ItemRarity(a) > AnimalData.ItemRarity(b) end)
+	for _, it in ipairs(candidates) do
+		if #data.Pack >= Config.Pack.MaxCompanions then break end
+		table.insert(data.Pack, it.Id)
+	end
+end
 
 function DataService.FindItem(data, id)
 	for i, it in ipairs(data.Inventory) do if it.Id == id then return it, i end end
@@ -90,6 +134,10 @@ function DataService.AddRolled(player, roll)
 	local rarity = AnimalData.ItemRarity(item)
 	if #data.Inventory < data.Slots then
 		table.insert(data.Inventory, item)
+		if #(data.Pack or {}) < Config.Pack.MaxCompanions and item.Id ~= data.Equipped then
+			DataService.AutoFillPack(data)
+			if S.MorphService and S.MorphService.RefreshPack then task.defer(S.MorphService.RefreshPack, player) end
+		end
 		return "Kept", item, 0
 	elseif (rarity >= Config.Roll.StarThreshold or (item.Tier or 1) >= 7) and #data.Vault < Config.Roll.VaultSize then
 		table.insert(data.Vault, item)
@@ -104,6 +152,10 @@ function DataService.RemoveItem(data, id)
 	local _, i = DataService.FindItem(data, id)
 	if i then table.remove(data.Inventory, i) end
 	if data.Equipped == id then data.Equipped = data.Inventory[1] and data.Inventory[1].Id or "" end
+	if data.Pack then
+		local pi = table.find(data.Pack, id)
+		if pi then table.remove(data.Pack, pi) end
+	end
 end
 
 function DataService.UpdateLeaderstats(player)
@@ -119,6 +171,9 @@ function DataService.UpdateLeaderstats(player)
 	ls.Coins.Value = math.min(data.Coins, 9e15)
 	ls.Rolls.Value = data.Stats.Rolls
 	ls.Rarest.Value = data.Stats.RarestPull > 0 and AnimalData.FormatRarityShort(data.Stats.RarestPull) or "-"
+	player:SetAttribute("Rebirth", data.Rebirth or 0)
+	player:SetAttribute("EquippedDie", data.EquippedDie or "Wooden")
+	player:SetAttribute("PackCPS", DataService.PackCPS(data))
 end
 
 function DataService.Sync(player)
@@ -133,6 +188,10 @@ function DataService.Sync(player)
 		Settings = d.Settings, LuckBoostUntil = d.LuckBoostUntil,
 		Passes = S.MonetizationService and S.MonetizationService.OwnedPasses(player) or {},
 		PaidRandomRestricted = S.MonetizationService and S.MonetizationService.IsPaidRandomRestricted(player) or false,
+		Dice = d.Dice, EquippedDie = d.EquippedDie, Rebirth = d.Rebirth, Skills = d.Skills,
+		Pack = d.Pack, PackCPS = DataService.PackCPS(d), CoinMult = DataService.CoinMult(d),
+		LuckySpins = d.LuckySpins, LuckySpinArmed = d.LuckySpinArmed, RedeemedCodes = d.RedeemedCodes,
+		OfflineCoinsPending = d.OfflineCoinsPending,
 	})
 	DataService.UpdateLeaderstats(player)
 end
@@ -219,6 +278,20 @@ function DataService.Load(player)
 		data.Index.MeadowRabbit = true
 	end
 	if not DataService.FindItem(data, data.Equipped) then data.Equipped = data.Inventory[1].Id end
+	data.Dice = data.Dice or { Wooden = true }; data.Dice.Wooden = true
+	if not Config.Dice.Types[data.EquippedDie or ""] then data.EquippedDie = "Wooden" end
+	DataService.AutoFillPack(data)
+	-- Calculate Offline Sanctuary earnings if player was away >= 60 seconds
+	local nowOs = os.time()
+	if (data.LastSeenOs or 0) > 0 and (nowOs - data.LastSeenOs) >= 60 then
+		local awaySec = math.min(nowOs - data.LastSeenOs, (Config.Pack.OfflineMaxHours or 12) * 3600)
+		local eff = (Config.Pack.BaseOfflineEfficiency or 0.25) + ((data.Skills and data.Skills.OfflineCap or 0) * Config.Skills.Nodes.OfflineCap.Step)
+		local earned = math.floor(DataService.PackCPS(data) * awaySec * eff)
+		if earned > 0 then
+			data.OfflineCoinsPending = (data.OfflineCoinsPending or 0) + earned
+		end
+	end
+	data.LastSeenOs = nowOs
 	profiles[player] = { Data = data, CanSave = canSave, Released = false, Session = { Start = workspace:GetServerTimeNow(), Gifts = {} } }
 	if not canSave then warn("[DataService] saving disabled for " .. player.Name .. " (enable Studio API access to persist)") end
 	DataService.UpdateLeaderstats(player)
@@ -228,6 +301,7 @@ end
 function DataService.Save(player, releaseLock: boolean?)
 	local p = profiles[player]
 	if not p or not p.CanSave or p.Released or not store then return end
+	p.Data.LastSeenOs = os.time()
 	local stolen = false
 	local payload = sanitizePlain(p.Data)
 	for attempt = 1, 3 do
@@ -284,6 +358,25 @@ function DataService.Start()
 		while true do
 			task.wait(90)
 			for player in pairs(profiles) do task.spawn(DataService.Save, player, false) end
+		end
+	end)
+	-- Active Companion Pack passive coin generator (Slime RNG x Anime Dice)
+	task.spawn(function()
+		local interval = Config.Pack.TickInterval or 2
+		while true do
+			task.wait(interval)
+			for player, p in pairs(profiles) do
+				local d = p.Data
+				if d then
+					local cps = DataService.PackCPS(d)
+					if cps > 0 then
+						local gain = math.floor(cps * interval)
+						d.Coins += gain
+						DataService.UpdateLeaderstats(player)
+						DataService.Notify(player, "PackIncome", { Gain = gain, CPS = cps, Coins = d.Coins })
+					end
+				end
+			end
 		end
 	end)
 end

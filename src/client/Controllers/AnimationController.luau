@@ -92,21 +92,55 @@ function Anim.Start()
 	end)
 end
 
--- Showcase halo: spin attachments of every character flagged Showcase (Ouroboros). Purely visual, client-side.
+-- Showcase halo + Sol's RNG Sacred Floor Sigils + Slime RNG / Anime Dice Bouncy 3D Companion Pack
 task.spawn(function()
 	local RunService = game:GetService("RunService")
 	local Players = game:GetService("Players")
-	RunService.RenderStepped:Connect(function()
+	local compCF = setmetatable({}, { __mode = "k" })
+	RunService.RenderStepped:Connect(function(dt)
 		local t = os.clock()
+		local alpha = math.clamp(dt * 8.5, 0.05, 0.45)
 		for _, p in ipairs(Players:GetPlayers()) do
 			local c = p.Character
-			if c and c:GetAttribute("Showcase") and c.PrimaryPart then
-				local r, h = c:GetAttribute("HaloRadius") or 8, c:GetAttribute("HaloHeight") or 4
-				for _, att in ipairs(c.PrimaryPart:GetChildren()) do
-					local base = att:IsA("Attachment") and att:GetAttribute("Angle")
-					if base then
-						local a = base + t * 0.9
-						att.Position = Vector3.new(math.cos(a) * r, h + math.sin(t * 2 + base * 2) * 0.8, math.sin(a) * r)
+			local root = c and c.PrimaryPart
+			if root then
+				if c:GetAttribute("Showcase") or c:GetAttribute("HasSigil") then
+					local r, h = c:GetAttribute("HaloRadius") or 8, c:GetAttribute("HaloHeight") or 4
+					for _, att in ipairs(root:GetChildren()) do
+						if att:IsA("Attachment") then
+							local base = att:GetAttribute("Angle")
+							if base then
+								local a = base + t * 0.9
+								att.Position = Vector3.new(math.cos(a) * r, h + math.sin(t * 2 + base * 2) * 0.8, math.sin(a) * r)
+							else
+								local sAng = att:GetAttribute("SigilAngle")
+								if sAng then
+									local sRad = att:GetAttribute("SigilRadius") or 6
+									local sY = att:GetAttribute("SigilY") or -2.5
+									local sSpd = att:GetAttribute("SigilSpeed") or 0.7
+									local a = sAng + t * sSpd
+									att.Position = Vector3.new(math.cos(a) * sRad, sY + math.sin(t * 2.5 + sAng) * 0.12, math.sin(a) * sRad)
+								end
+							end
+						end
+					end
+				end
+				-- Slime RNG x Anime Dice: Bouncy 3D Companion Pack following in V-formation
+				local pack = c:FindFirstChild("Companions")
+				if pack then
+					for _, comp in ipairs(pack:GetChildren()) do
+						if comp:IsA("Model") then
+							local ox = comp:GetAttribute("OffsetX") or -5.5
+							local oz = comp:GetAttribute("OffsetZ") or 4
+							local ph = comp:GetAttribute("Phase") or 0
+							local bounce = math.abs(math.sin(t * 4.4 + ph)) * 1.15
+							local sway = math.sin(t * 2.2 + ph) * 0.08
+							local targetCF = root.CFrame * CFrame.new(ox, bounce - 0.5, oz) * CFrame.Angles(0, sway, math.sin(t * 4.4 + ph) * 0.06)
+							local cur = compCF[comp]
+							local nextCF = cur and cur:Lerp(targetCF, alpha) or targetCF
+							compCF[comp] = nextCF
+							comp:PivotTo(nextCF)
+						end
 					end
 				end
 			end

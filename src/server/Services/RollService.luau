@@ -26,7 +26,10 @@ function Roll.GetLuck(player)
 	if not data then return 1, {}, {}, 1, 1 end
 	local streakStacks = math.max(data.Stats.StreakStacks or 0, (data.Stats.UnluckyStreak or 0) // 100)
 	local streakBonus = math.min(streakStacks * (Config.Luck.StreakPer100 or 0.02), Config.Luck.StreakCap or 0.5)
-	local add = { Base = 1, Rank = (data.Rank - 1) * 0.05, Streak = streakBonus, Totems = 0, AlphaZone = 0, Potion = 0, Weather = 0, Index = 0 }
+	local skillLuck = ((data.Skills and data.Skills.SuperLuck) or 0) * Config.Skills.Nodes.SuperLuck.Step
+	local dieCfg = Config.Dice.Types[data.EquippedDie or "Wooden"] or Config.Dice.Types.Wooden
+	local dieBonus = math.max(0, (dieCfg.Luck or 1) - 1)
+	local add = { Base = 1, Rank = (data.Rank - 1) * 0.05, Streak = streakBonus, Skills = skillLuck, Die = dieBonus, Totems = 0, AlphaZone = 0, Potion = 0, Weather = 0, Index = 0 }
 	for _, id in ipairs(data.EquippedTotems) do local t = Config.Totems[id]; if t then add.Totems += t.Luck end end
 	if player:GetAttribute("InAlpha") then add.AlphaZone = Config.Luck.AlphaZone end
 	if (data.LuckyUntil or 0) > os.time() then add.Potion = Config.Potions.Lucky.Luck end
@@ -35,16 +38,22 @@ function Roll.GetLuck(player)
 	local mult = S.MonetizationService.LuckMultipliers(player)
 	local additive = 0
 	for _, v in pairs(add) do additive += v end
+	local rebirthMult = Config.RebirthLuckMult(data.Rebirth or 0)
 	local paid = 1
 	for _, v in pairs(mult) do paid *= v end
 	paid = math.min(paid, Config.Monetization.PaidLuckCap)
 	local event = Roll.EventMult()
-	return additive * paid * event, add, mult, paid, event
+	return additive * rebirthMult * paid * event, add, mult, paid, event, rebirthMult
 end
 
 function Roll.CanQuick(player)
 	local data = S.DataService.Get(player)
 	return data and (data.Rank >= Config.Roll.QuickRollRank or S.MonetizationService.HasPass(player, "SwiftRolls")) or false
+end
+
+function Roll.BonusEvery(data)
+	local red = (data and data.Skills and data.Skills.BonusCycle or 0) * Config.Skills.Nodes.BonusCycle.Step
+	return math.max(5, Config.Roll.BonusEvery - red)
 end
 
 function Roll.GetCooldown(player, quick, multi)
@@ -54,7 +63,8 @@ function Roll.GetCooldown(player, quick, multi)
 	if data then
 		local ts = 0
 		for _, id in ipairs(data.EquippedTotems) do local t = Config.Totems[id]; if t then ts += t.Speed end end
-		speed *= 1 + ts
+		local skillSpd = ((data.Skills and data.Skills.RollSpeed) or 0) * Config.Skills.Nodes.RollSpeed.Step
+		speed *= 1 + ts + skillSpd
 		if quick and Roll.CanQuick(player) then speed *= Config.Roll.QuickRollSpeedMult end
 		speed *= S.MonetizationService.SpeedMult(player)
 	end
@@ -68,8 +78,9 @@ end
 
 -- one roll through the full pipeline. force = { Tier, Mutation, Animal } for admin/test rolls
 local function doRoll(player, data, luck, extra, force)
+	local cycle = Roll.BonusEvery(data)
 	data.Stats.BonusCounter = (data.Stats.BonusCounter or 0) + 1
-	local bonus = data.Stats.BonusCounter >= Config.Roll.BonusEvery
+	local bonus = data.Stats.BonusCounter >= cycle
 	if bonus then data.Stats.BonusCounter = 0 end
 	local rollLuck = luck * (bonus and Config.Roll.BonusLuckMult or 1) + (extra or 0)
 	local roll = AnimalData.Roll(rollLuck, S.WeatherService.Boosts(), rng, Config.Luck.MutationLuckExponent, force)
@@ -90,7 +101,8 @@ local function doRoll(player, data, luck, extra, force)
 	if rarity > data.Stats.RarestPull then data.Stats.RarestPull = rarity; data.Stats.RarestName = AnimalData.ItemName(item) end
 	local tier = AnimalData.TierFor(item)
 	return { Item = item, Name = AnimalData.ItemName(item), Rarity = rarity, Tier = tier.Name, TierIndex = item.Tier,
-		Mutation = item.Mutation, Status = status, Coins = coins, NewIndex = #newIndex > 0, Luck = rollLuck, Bonus = bonus }
+		Mutation = item.Mutation, Status = status, Coins = coins, NewIndex = #newIndex > 0, Luck = rollLuck, Bonus = bonus,
+		Die = data.EquippedDie or "Wooden" }
 end
 
 local function announce(player, best)
@@ -121,20 +133,29 @@ function Roll.Execute(player, quick, count, force)
 	local results, best = {}, nil
 	for i = 1, multi and Config.Roll.MultiCount or 1 do
 		local extra = 0
-		if i == 1 and data.ElixirArmed and not force then
-			extra = Config.Potions.Elixir.Luck
-			data.ElixirArmed = false
-			S.MorphService.SetElixirAura(player, false)
+		local usedLuckySpin = false
+		if i == 1 and not force then
+			if data.ElixirArmed then
+				extra += Config.Potions.Elixir.Luck
+				data.ElixirArmed = false
+				S.MorphService.SetElixirAura(player, false)
+			end
+			if data.LuckySpinArmed then
+				extra += (Config.LuckySpinBoost or 25) * math.max(1, luck)
+				data.LuckySpinArmed = false
+				usedLuckySpin = true
+			end
 		end
 		local r = doRoll(player, data, luck, extra, i == 1 and force or nil)
-		r.Elixir = extra > 0
+		r.Elixir = extra >= Config.Potions.Elixir.Luck
+		r.LuckySpin = usedLuckySpin
 		r.Quick = quick
 		table.insert(results, r)
 		if not best or better(r, best) then best = r end
 	end
 	S.ProgressionService.CheckRanks(player)
 	S.DataService.Sync(player)
-	Net.Get("RollResult"):FireClient(player, { Results = results, BestIndex = table.find(results, best), Multi = multi })
+	Net.Get("RollResult"):FireClient(player, { Results = results, BestIndex = table.find(results, best), Multi = multi, Die = data.EquippedDie or "Wooden" })
 	announce(player, best)
 	return results
 end
@@ -162,15 +183,17 @@ function Roll.Start()
 			for _, p in ipairs(Players:GetPlayers()) do
 				local data = S.DataService.Get(p)
 				if data then
-					local luck, add, mult, paid, event = Roll.GetLuck(p)
+					local luck, add, mult, paid, event, rebirthMult = Roll.GetLuck(p)
+					local cycle = Roll.BonusEvery(data)
 					p:SetAttribute("Luck", luck)
-					p:SetAttribute("LuckBreakdown", HttpService:JSONEncode({ Add = add, Mult = mult, PaidTotal = paid, Event = event, Total = luck }))
+					p:SetAttribute("LuckBreakdown", HttpService:JSONEncode({ Add = add, Mult = mult, PaidTotal = paid, Event = event, RebirthMult = rebirthMult, Total = luck }))
 					p:SetAttribute("RollCooldown", Roll.GetCooldown(p, false))
 					p:SetAttribute("RollCooldownQuick", Roll.GetCooldown(p, true))
 					p:SetAttribute("RollCooldownMulti", Roll.GetCooldown(p, false, true))
 					p:SetAttribute("CanQuick", Roll.CanQuick(p))
 					p:SetAttribute("CanMulti", Roll.CanMulti(p))
-					p:SetAttribute("BonusIn", Config.Roll.BonusEvery - (data.Stats.BonusCounter or 0))
+					p:SetAttribute("BonusEvery", cycle)
+					p:SetAttribute("BonusIn", math.max(1, cycle - (data.Stats.BonusCounter or 0)))
 				end
 			end
 		end

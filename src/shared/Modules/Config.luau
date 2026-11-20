@@ -159,7 +159,79 @@ Config.PlaytimeGifts = {
 
 Config.LeaderboardRefresh = 60
 
--- Built-in engine sounds (always available, no uploads needed). Swap for your own asset ids here.
+-- Anime Dice: 8-tier 3D Dice Ladder (each die physically throws in 3D with custom color, material & trail)
+Config.Dice = {
+	Order = { "Wooden", "Amber", "Frost", "Magma", "Storm", "Astral", "Chrono", "Void" },
+	Types = {
+		Wooden = { Display = "Wooden Die", Rarity = "Common",    Icon = "🎲", Luck = 1,    Coins = 0,          Materials = {}, Color = C(196, 154, 108), Accent = C(240, 205, 160), Mat = Enum.Material.Wood },
+		Amber  = { Display = "Amber Die",  Rarity = "Uncommon",  Icon = "🟠", Luck = 1.5,  Coins = 2500,       Materials = {}, Color = C(255, 174, 52),  Accent = C(255, 225, 120), Mat = Enum.Material.Glass },
+		Frost  = { Display = "Frost Die",  Rarity = "Rare",      Icon = "❄️", Luck = 2.8,  Coins = 25000,      Materials = { FrostCore = 4 }, Color = C(92, 225, 255), Accent = C(210, 248, 255), Mat = Enum.Material.Ice },
+		Magma  = { Display = "Magma Die",  Rarity = "Epic",      Icon = "🔥", Luck = 5.5,  Coins = 250000,     Materials = { MagmaHeart = 6 }, Color = C(255, 94, 54), Accent = C(255, 200, 90), Mat = Enum.Material.CrackedLava },
+		Storm  = { Display = "Storm Die",  Rarity = "Legendary", Icon = "⚡", Luck = 12,   Coins = 2500000,    Materials = { FrostCore = 8, MagmaHeart = 8 }, Color = C(255, 224, 71), Accent = C(140, 230, 255), Mat = Enum.Material.Neon },
+		Astral = { Display = "Astral Die", Rarity = "Mythical",  Icon = "🌌", Luck = 28,   Coins = 25000000,   Materials = { EclipseDust = 10 }, Color = C(169, 146, 255), Accent = C(230, 215, 255), Mat = Enum.Material.ForceField },
+		Chrono = { Display = "Chrono Die", Rarity = "Cosmic",    Icon = "⏳", Luck = 65,   Coins = 250000000,  Materials = { FrostCore = 18, MagmaHeart = 18, EclipseDust = 18 }, Color = C(71, 255, 209), Accent = C(210, 255, 245), Mat = Enum.Material.Foil },
+		Void   = { Display = "Void Die",   Rarity = "Godly",     Icon = "🕳️", Luck = 150,  Coins = 1500000000, Materials = { EclipseDust = 40, FrostCore = 25, MagmaHeart = 25 }, Color = C(255, 79, 216), Accent = C(40, 210, 255), Mat = Enum.Material.Neon, Rainbow = true },
+	},
+}
+
+-- Slime RNG: Essence Rebirth (spends Essence, resets Coins only; keeps ALL Animals, Index, Dice, Totems, Skills & Passes)
+Config.Rebirth = {
+	BaseEssence = 500,        -- Rebirth 1 costs 500 Essence; doubles each tier (2^n)
+	CostGrowth = 2.0,
+	LuckBase = 1.35,          -- compounding x1.35 Luck per Rebirth
+	CoinBase = 1.50,          -- compounding x1.50 Coin Income per Rebirth
+}
+function Config.RebirthCost(level: number): number
+	return math.floor(Config.Rebirth.BaseEssence * (Config.Rebirth.CostGrowth ^ level) + 0.5)
+end
+function Config.RebirthLuckMult(level: number): number
+	if level <= 0 then return 1 end
+	return math.floor((Config.Rebirth.LuckBase ^ level) * 100 + 0.5) / 100
+end
+function Config.RebirthCoinMult(level: number): number
+	if level <= 0 then return 1 end
+	return math.floor((Config.Rebirth.CoinBase ^ level) * 100 + 0.5) / 100
+end
+
+-- Slime RNG: Branching Coin Skill Tree
+Config.Skills = {
+	Order = { "CoinYield", "RollSpeed", "SuperLuck", "OfflineCap", "BonusCycle" },
+	Nodes = {
+		CoinYield  = { Display = "Coin Yield",         Icon = "💰", Max = 10, BaseCost = 500,    CostMult = 3.2, Step = 0.35, Desc = "+35% Passive & Sell Coins per level" },
+		RollSpeed  = { Display = "Hyper Roll Speed",   Icon = "⚡", Max = 5,  BaseCost = 2000,   CostMult = 4.5, Step = 0.10, Desc = "+10% Roll Speed & faster Dice throw per level" },
+		SuperLuck  = { Display = "Super Luck Core",    Icon = "🍀", Max = 10, BaseCost = 1500,   CostMult = 3.5, Step = 0.15, Desc = "+15% Base Additive Luck per level" },
+		OfflineCap = { Display = "Offline Sanctuary",  Icon = "💤", Max = 5,  BaseCost = 5000,   CostMult = 4.0, Step = 0.15, Desc = "+15% Offline Pack Coin rate (up to 12h away)" },
+		BonusCycle = { Display = "Bonus Roll Mastery", Icon = "🔥", Max = 4,  BaseCost = 25000,  CostMult = 6.0, Step = 1,    Desc = "Reduces 2x Bonus Roll cycle by 1 roll per level (10 -> 6)" },
+	},
+}
+function Config.SkillCost(key: string, currentLevel: number): number
+	local n = Config.Skills.Nodes[key]
+	if not n then return 0 end
+	return math.floor(n.BaseCost * (n.CostMult ^ currentLevel) + 0.5)
+end
+
+-- Slime RNG x Anime Dice: Active Companion Pack (top 3 companions follow player in 3D & generate passive Coins/sec)
+Config.Pack = {
+	MaxCompanions = 3,
+	TickInterval = 2,         -- awards passive Coins every 2 seconds
+	OfflineMaxHours = 12,
+	BaseOfflineEfficiency = 0.25,
+}
+function Config.CompanionCPS(rarity: number): number
+	return math.max(1, math.floor((rarity ^ 0.42) * 1.5))
+end
+
+-- Promo Codes & Lucky Spins (Lucky Spin = supercharged +2,500% Luck roll token)
+Config.LuckySpinBoost = 25    -- +2,500% additive Luck on next roll
+Config.Codes = {
+	RELEASE   = { Spins = 2, Coins = 2500,   Materials = { FrostCore = 3, MagmaHeart = 3 }, Desc = "2 Lucky Spins, 2,500 Coins & 6 Biome Cores" },
+	ANIMALRNG = { Spins = 3, Essence = 1500, Potion = "Lucky", Amount = 2,                  Desc = "3 Lucky Spins, 1,500 Essence & 2 Lucky Potions" },
+	OUROBOROS = { Spins = 5, Potion = "Elixir", Amount = 1,                                 Desc = "5 Lucky Spins & 1 Eclipse Elixir (+50,000% Luck)" },
+	SLIMEDICE = { Spins = 3, Coins = 25000,  Materials = { EclipseDust = 5 },               Desc = "3 Lucky Spins, 25,000 Coins & 5 Eclipse Dust" },
+	UPDATE1   = { Spins = 2, Essence = 2500, Coins = 10000,                                 Desc = "2 Lucky Spins, 2,500 Essence & 10,000 Coins" },
+}
+
+-- Built-in engine sounds (always available, no uploads needed). Layered for flashy multi-harmonic SFX.
 Config.Sounds = {
 	Tick   = "rbxassetid://15675032796", -- Roblox_UI_Small_Click
 	Click  = "rbxassetid://15675059323", -- Roblox_UI_Bright_Click
@@ -168,12 +240,12 @@ Config.Sounds = {
 	Reveal = "rbxassetid://15675043410", -- Roblox_UI_Tonal_Stinger
 	Bass   = "rbxassetid://9038652624",  -- APM: Big Hair Rock - Hit 3
 	Roar   = "rbxassetid://9038652624",
-	Whoosh = "rbxassetid://15674975792", -- Roblox_UI_Whoosh_03
+	Whoosh = "rbxassetid://15674975792", -- Roblox_UI_Whoosh_03 (dice throw)
 	Fail   = "rbxassetid://15675075163", -- Roblox_UI_Delete
 	Rise   = "rbxassetid://15675028888", -- Roblox_UI_Whoosh_02 (tension riser)
-	Swish  = "rbxassetid://15675024286", -- Roblox_UI_Whoosh_01
-	Chime  = "rbxassetid://15675085146", -- Roblox_UI_Indicator
-	Hello  = "rbxassetid://15675016548", -- Roblox_UI_Piano_Hello (bonus roll)
+	Swish  = "rbxassetid://15675024286", -- Roblox_UI_Whoosh_01 (dice bounce)
+	Chime  = "rbxassetid://15675085146", -- Roblox_UI_Indicator (crystal shatter / coin chime)
+	Hello  = "rbxassetid://15675016548", -- Roblox_UI_Piano_Hello (bonus roll / rebirth chord)
 	Low    = "rbxassetid://15675062723", -- Roblox_UI_Whistle_Low (Unattainable build-up)
 }
 

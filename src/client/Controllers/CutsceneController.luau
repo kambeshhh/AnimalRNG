@@ -250,10 +250,168 @@ local function tag(J, r, color)
 	tw(l, { TextTransparency = 0 }, 0.4)
 end
 
+-- Anime Dice: Physical 3D Dice Throw & Shatter Reveal (1 die or 5 dice arc in front of player)
+local function buildDiePart(dieCfg, tierCol)
+	local p = Instance.new("Part")
+	p.Name = "ThrownDie3D"
+	p.Size = Vector3.new(2.3, 2.3, 2.3)
+	p.Anchored = true; p.CanCollide = false; p.CanQuery = false; p.CanTouch = false; p.CastShadow = false
+	p.Material = dieCfg.Mat or Enum.Material.Neon
+	p.Color = dieCfg.Color
+	local hl = Instance.new("Highlight")
+	hl.FillColor = dieCfg.Color; hl.FillTransparency = 0.35; hl.OutlineColor = tierCol or dieCfg.Accent or WHITE; hl.OutlineTransparency = 0
+	hl.Parent = p
+	local pl = Instance.new("PointLight")
+	pl.Color = tierCol or dieCfg.Color; pl.Range = 16; pl.Brightness = 2.8; pl.Parent = p
+	local a0 = Instance.new("Attachment"); a0.Position = Vector3.new(0, 1.1, 0); a0.Parent = p
+	local a1 = Instance.new("Attachment"); a1.Position = Vector3.new(0, -1.1, 0); a1.Parent = p
+	local tr = Instance.new("Trail")
+	tr.Attachment0 = a0; tr.Attachment1 = a1
+	tr.Color = dieCfg.Rainbow and RAINBOW or ColorSequence.new(dieCfg.Color, tierCol or dieCfg.Accent or WHITE)
+	tr.LightEmission = 1; tr.Lifetime = 0.28; tr.WidthScale = NumberSequence.new(1, 0)
+	tr.Transparency = NumberSequence.new(0.15, 1); tr.Parent = p
+	local sp = Instance.new("ParticleEmitter")
+	sp.Texture = SPARK; sp.LightEmission = 1
+	sp.Color = dieCfg.Rainbow and RAINBOW or ColorSequence.new(dieCfg.Color, tierCol or WHITE)
+	sp.Rate = 32; sp.Size = NumberSequence.new(0.45, 0); sp.Speed = NumberRange.new(2, 6); sp.Lifetime = NumberRange.new(0.25, 0.5)
+	sp.SpreadAngle = Vector2.new(180, 180); sp.Parent = p
+	-- Glowing pips on faces
+	for _, normal in ipairs(Enum.NormalId:GetEnumItems()) do
+		local sg = Instance.new("SurfaceGui"); sg.Face = normal; sg.LightInfluence = 0; sg.AlwaysOnTop = false; sg.Parent = p
+		local lbl = Instance.new("TextLabel"); lbl.BackgroundTransparency = 1; lbl.Size = UDim2.fromScale(1, 1)
+		lbl.Font = Enum.Font.FredokaOne; lbl.TextScaled = true; lbl.Text = "✦"; lbl.TextColor3 = dieCfg.Accent or WHITE; lbl.Parent = sg
+	end
+	p.Parent = workspace
+	return p
+end
+
+local function throwDice3D(batch)
+	local root = rootPart()
+	if not root then return end
+	local dieKey = batch.Die or (State.Data and State.Data.EquippedDie) or "Wooden"
+	local dieCfg = Config.Dice.Types[dieKey] or Config.Dice.Types.Wooden
+	local count = batch.Multi and #batch.Results or 1
+	local quick = batch.Results[1] and batch.Results[1].Quick
+	local dur = quick and 0.34 or 0.56
+	local J = Janitor.new()
+	local dice = {}
+	local look = root.CFrame.LookVector
+	local right = root.CFrame.RightVector
+	local startBase = root.Position + Vector3.new(0, 3.2, 0) + look * 2.5
+
+	sfx(nil, "Whoosh", 0.55, quick and 1.3 or 1.08)
+	sfx(nil, "Tick", 0.4, 1.4)
+
+	for i = 1, count do
+		local r = batch.Results[i]
+		local tCol = tierColor(r and r.TierIndex or 1)
+		local dPart = J:add(buildDiePart(dieCfg, tCol))
+		local spread = (count == 1) and 0 or ((i - (count + 1) / 2) * 3.4)
+		local targetPos = root.Position + look * (10.5 + math.abs(spread) * 0.25) + right * spread - Vector3.new(0, 1.2, 0)
+		dice[i] = {
+			part = dPart,
+			p0 = startBase + right * (spread * 0.25),
+			p1 = targetPos,
+			col = tCol,
+			tierIdx = r and r.TierIndex or 1,
+			best = (i == batch.BestIndex),
+			rx = math.random(10, 18) * (i % 2 == 0 and 1 or -1),
+			ry = math.random(12, 20),
+			rz = math.random(8, 16),
+		}
+	end
+
+	local t0 = os.clock()
+	local bounced = false
+	while true do
+		local elapsed = os.clock() - t0
+		local a = math.min(1, elapsed / dur)
+		-- 2-hop parabolic arc: main throw (0..0.72) + bounce hop (0.72..1.0)
+		local hopY
+		if a < 0.72 then
+			local u = a / 0.72
+			hopY = math.sin(u * math.pi) * 6.5
+		else
+			if not bounced then
+				bounced = true
+				sfx(nil, "Swish", 0.45, 1.35)
+				sfx(nil, "Tick", 0.45, 1.65)
+				for _, d in ipairs(dice) do
+					shockwave(J, d.p1 - Vector3.new(0, 0.8, 0), d.col, d.best and 6.5 or 4.2, 0.32)
+				end
+			end
+			local u = (a - 0.72) / 0.28
+			hopY = math.sin(u * math.pi) * 2.4
+		end
+		for _, d in ipairs(dice) do
+			local pos = d.p0:Lerp(d.p1, a) + Vector3.new(0, hopY, 0)
+			d.part.CFrame = CFrame.new(pos) * CFrame.Angles(elapsed * d.rx, elapsed * d.ry, elapsed * d.rz)
+		end
+		if a >= 1 then break end
+		task.wait()
+	end
+
+	-- Shatter burst on impact
+	local bestD = dice[batch.BestIndex or 1] or dice[1]
+	local shatterPitch = math.clamp(0.85 + (bestD.tierIdx or 1) * 0.035, 0.85, 1.75)
+	sfx(nil, "Chime", 0.55, shatterPitch)
+	sfx(nil, "Pop", 0.5, shatterPitch * 0.95)
+	for _, d in ipairs(dice) do
+		burstAt(J, d.p1, (d.tierIdx >= 25 or dieCfg.Rainbow) and RAINBOW or d.col, d.best and 42 or 20, d.best and 22 or 14)
+		shockwave(J, d.p1 - Vector3.new(0, 0.8, 0), d.col, d.best and 14 or 8, 0.48)
+		d.part.Transparency = 1
+	end
+	task.delay(0.55, function() J:clean() end)
+end
+
+-- World Power-Up VFX & multi-harmonic SFX for Rebirth, Dice Unlock, Skill Upgrade & Code Redemption
+function Cut.PowerUpFX(payload)
+	local col = (payload and payload.Color) or Config.UI.Gold
+	local kind = (payload and payload.Kind) or "Skill"
+	local J = Janitor.new()
+	local root = rootPart()
+	if kind == "Rebirth" then
+		flash(0.55, col)
+		sfx(nil, "Bass", 0.8, 0.65)
+		sfx(nil, "Reveal", 0.65, 0.9)
+		sfx(nil, "Hello", 0.6, 1.05)
+		task.delay(0.15, function() sfx(nil, "Chime", 0.6, 1.35) end)
+		ring(J, col, 680, 0.75, 7)
+		ring(J, WHITE, 520, 0.55, 5)
+		if root then
+			Cut.SkyPillar(root.Position, col, 4.5, true)
+			burstAt(J, root.Position, RAINBOW, 110, 26)
+			shockwave(J, root.Position - Vector3.new(0, 2.5, 0), col, 44, 0.9)
+		end
+	elseif kind == "Die" or kind == "LuckySpin" then
+		flash(0.32, col)
+		sfx(nil, "Reveal", 0.55, 1.15)
+		sfx(nil, "Chime", 0.55, 1.4)
+		ring(J, col, 460, 0.5, 5)
+		if root then
+			burstAt(J, root.Position, col, 65, 20)
+			shockwave(J, root.Position - Vector3.new(0, 2.5, 0), col, 26, 0.65)
+		end
+	else
+		sfx(nil, "Chime", 0.5, 1.25)
+		sfx(nil, "Pop", 0.45, 1.3)
+		if root then
+			burstAt(J, root.Position, col, 35, 15)
+			shockwave(J, root.Position - Vector3.new(0, 2.5, 0), col, 16, 0.45)
+		end
+	end
+	task.delay(1.5, function() J:clean() end)
+end
+
 ------------------------------------------------------------------ cards
 local function oddsLine(r)
-	return string.format("%s  •  %s%s%s%s", AnimalData.FormatRarity(r.Rarity), r.Tier, r.Elixir and "  •  ELIXIR" or "",
-		r.Bonus and "  •  <font color='#FFD166'>★ BONUS</font>" or "", r.NewIndex and "  •  <font color='#78FFAA'>NEW!</font>" or "")
+	local dieCfg = r.Die and Config.Dice.Types[r.Die]
+	local dieTag = (dieCfg and r.Die ~= "Wooden") and ("  •  " .. dieCfg.Icon .. " " .. dieCfg.Display) or ""
+	return string.format("%s  •  %s%s%s%s%s%s", AnimalData.FormatRarity(r.Rarity), r.Tier, dieTag,
+		r.Elixir and "  •  ELIXIR" or "",
+		r.LuckySpin and "  •  <font color='#28D2FF'>🎰 LUCKY SPIN</font>" or "",
+		r.Bonus and "  •  <font color='#FFD166'>★ BONUS</font>" or "",
+		r.NewIndex and "  •  <font color='#78FFAA'>NEW!</font>" or "")
 end
 
 -- Tiers 1–3 (and anything below the player's cutscene threshold): instant card, no takeover
@@ -276,12 +434,22 @@ local function starOpen(J, r, col, rainbow, buildT)
 	local st = UI.Gui.StarReveal
 	J:add(function() st.Visible = false end)
 	st.Visible = true; st.BackgroundTransparency = 1
-	st.Tier.Text = r.Tier:upper(); st.Tier.TextColor3 = col; st.AnimalName.Text = ""; st.Odds.Text = ""
+	st.Tier.Text = "// " .. r.Tier:upper() .. " //"; st.Tier.TextColor3 = col; st.AnimalName.Text = ""; st.Odds.Text = ""
 	st.Emblem.Grad.Color = rainbow and RAINBOW or ColorSequence.new(col:Lerp(WHITE, 0.5), col)
-	tw(st, { BackgroundTransparency = 0.35 }, 0.3)
+	tw(st, { BackgroundTransparency = 0.28 }, 0.3)
 	st.Emblem.Size = UDim2.fromOffset(30, 30); st.Emblem.Rotation = 0
-	tw(st.Emblem, { Size = UDim2.fromOffset(220, 220) }, math.max(0.3, buildT), Enum.EasingStyle.Back)
-	J:conn(RunService.RenderStepped:Connect(function(dt) st.Emblem.Rotation += dt * 160 end))
+	tw(st.Emblem, { Size = UDim2.fromOffset(235, 235) }, math.max(0.3, buildT), Enum.EasingStyle.Back)
+	-- Sol's RNG counter-rotating 8-point secondary star overlay + beat pulses
+	local pulseRing = Instance.new("Frame"); pulseRing.AnchorPoint = Vector2.new(0.5, 0.5); pulseRing.Position = UDim2.fromScale(0.5, 0.5)
+	pulseRing.Size = UDim2.fromOffset(90, 90); pulseRing.BackgroundTransparency = 1; pulseRing.Rotation = 45; pulseRing.Parent = st; J:add(pulseRing)
+	local ps = Instance.new("UIStroke"); ps.Color = col; ps.Thickness = 3; ps.Transparency = 0.2; ps.Parent = pulseRing
+	local t0 = os.clock()
+	J:conn(RunService.RenderStepped:Connect(function(dt)
+		st.Emblem.Rotation += dt * 175
+		pulseRing.Rotation -= dt * 120
+		local beat = 1 + math.sin((os.clock() - t0) * 14) * 0.12
+		pulseRing.Size = UDim2.fromOffset(180 * beat, 180 * beat)
+	end))
 end
 local function starReveal(r, col)
 	local st = UI.Gui.StarReveal
@@ -493,6 +661,7 @@ function Cut.PlayBatch(batch)
 	State.CutsceneBusy = true
 	local ok, err = pcall(function()
 		for _, r in ipairs(batch.Results) do r.TierIndex = r.TierIndex or AnimalData.TierIndex(r.Rarity) end
+		pcall(throwDice3D, batch)
 		if batch.Multi then
 			multiStrip(batch)
 			local best = batch.Results[batch.BestIndex]
