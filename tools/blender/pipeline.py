@@ -13,7 +13,11 @@ SPEC = {
     "Phoenix": ("bird", False), "InfinityPhoenix": ("bird", False), "Thunderbird": ("bird", False), "Wyvern": ("bird", False),
     "Minotaur": ("biped", False),
     "Basilisk": ("serpent", False), "Leviathan": ("serpent", False), "Kraken": ("serpent", False), "Ouroboros": ("static", False),
+    # batch 2 (Meshy text-to-3d, 2026-11-20)
+    "WildBoar": ("quad", True), "GiantPanda": ("quad", True), "WoollyMammoth": ("quad", True),
+    "LavaSalamander": ("quad", True), "VoidStag": ("quad", True),
 }
+TAG = os.environ.get("PIPELINE_TAG", "")  # suffix for the report/blend so batches don't overwrite each other
 only = [a for a in sys.argv[sys.argv.index("--") + 1:]] if "--" in sys.argv else []
 names = [n for n in SPEC if not only or n in only]
 
@@ -259,8 +263,8 @@ cam = bpy.data.objects.new("Cam", cam_data); scn.collection.objects.link(cam)
 cam.location = Vector((21 + 30, -8 - 22, 22)); tgt = Vector((21, -8, 1))
 cam.rotation_euler = (tgt - cam.location).to_track_quat("-Z", "Y").to_euler()
 scn.camera = cam
-scn.render.filepath = os.path.join(OUT, "_posed.png")
+scn.render.filepath = os.path.join(OUT, "_posed" + TAG + ".png")
 bpy.ops.render.render(write_still=True)
-with open(os.path.join(OUT, "_report.json"), "w") as f: json.dump(report, f, indent=1)
-bpy.ops.wm.save_as_mainfile(filepath=os.path.join(OUT, "NewCreatures.blend"))
+with open(os.path.join(OUT, "_report" + TAG + ".json"), "w") as f: json.dump(report, f, indent=1)
+bpy.ops.wm.save_as_mainfile(filepath=os.path.join(OUT, "NewCreatures" + TAG + ".blend"))
 print("PIPELINE_DONE")
