@@ -1,0 +1,164 @@
+{
+    "Basilisk":  {
+                     "Group":  "Apex",
+                     "MeshId":  "rbxassetid://107650017096183",
+                     "TextureID":  "rbxassetid://105786932932903",
+                     "Weight":  1
+                 },
+    "BoldTiger":  {
+                      "Group":  "Starter",
+                      "MeshId":  "rbxassetid://79803508722712",
+                      "TextureID":  "rbxassetid://117190222090095",
+                      "Weight":  1
+                  },
+    "CelestialUnicorn":  {
+                             "Group":  "Mythical",
+                             "MeshId":  "rbxassetid://133303800656619",
+                             "TextureID":  "rbxassetid://100100626233268",
+                             "Weight":  1
+                         },
+    "Cerberus":  {
+                     "Group":  "Mythical",
+                     "MeshId":  "rbxassetid://84877153429711",
+                     "TextureID":  "rbxassetid://108942173868620",
+                     "Weight":  1
+                 },
+    "Chimera":  {
+                    "Group":  "Mythical",
+                    "MeshId":  "rbxassetid://136067837533973",
+                    "TextureID":  "rbxassetid://74905879437213",
+                    "Weight":  1
+                },
+    "Crocodile":  {
+                      "Group":  "Starter",
+                      "MeshId":  "rbxassetid://90648134164460",
+                      "TextureID":  "rbxassetid://134510519513846",
+                      "Weight":  1
+                  },
+    "FrostbiteWolf":  {
+                          "Group":  "Apex",
+                          "MeshId":  "rbxassetid://93463920444161",
+                          "TextureID":  "rbxassetid://140148225078486",
+                          "Weight":  1
+                      },
+    "Griffin":  {
+                    "Group":  "Mythical",
+                    "MeshId":  "rbxassetid://111823042340059",
+                    "TextureID":  "rbxassetid://89344712728859",
+                    "Weight":  1
+                },
+    "HoneyBadger":  {
+                        "Group":  "Starter",
+                        "MeshId":  "rbxassetid://99562477152567",
+                        "TextureID":  "rbxassetid://92330143962203",
+                        "Weight":  1
+                    },
+    "Hydra":  {
+                  "Group":  "Mythical",
+                  "MeshId":  "rbxassetid://132472497600478",
+                  "TextureID":  "rbxassetid://110377034208360",
+                  "Weight":  1
+              },
+    "InfinityPhoenix":  {
+                            "Group":  "Cosmic",
+                            "MeshId":  "rbxassetid://76555859288223",
+                            "TextureID":  "rbxassetid://118112202640182",
+                            "Weight":  1
+                        },
+    "Kitsune":  {
+                    "Group":  "Mythical",
+                    "MeshId":  "rbxassetid://76707249390454",
+                    "TextureID":  "rbxassetid://95172621651508",
+                    "Weight":  1
+                },
+    "Kraken":  {
+                   "Group":  "Cosmic",
+                   "MeshId":  "rbxassetid://136484999451099",
+                   "TextureID":  "rbxassetid://103828441170928",
+                   "Weight":  1
+               },
+    "Leviathan":  {
+                      "Group":  "Cosmic",
+                      "MeshId":  "rbxassetid://124146234919478",
+                      "TextureID":  "rbxassetid://131066629031552",
+                      "Weight":  1
+                  },
+    "MagmaGrizzly":  {
+                         "Group":  "Apex",
+                         "MeshId":  "rbxassetid://74819048612689",
+                         "TextureID":  "rbxassetid://88137845627965",
+                         "Weight":  1
+                     },
+    "MeadowRabbit":  {
+                         "Group":  "Starter",
+                         "MeshId":  "rbxassetid://114986495404922",
+                         "TextureID":  "rbxassetid://84699409996679",
+                         "Weight":  1
+                     },
+    "Minotaur":  {
+                     "Group":  "Mythical",
+                     "MeshId":  "rbxassetid://133001378919568",
+                     "TextureID":  "rbxassetid://135478461707183",
+                     "Weight":  1
+                 },
+    "Ouroboros":  {
+                      "Group":  "Unattainable",
+                      "MeshId":  "rbxassetid://116365134546027",
+                      "TextureID":  "rbxassetid://127930559600865",
+                      "Weight":  1
+                  },
+    "Pegasus":  {
+                    "Group":  "Mythical",
+                    "MeshId":  "rbxassetid://79453075078967",
+                    "TextureID":  "rbxassetid://123749257943289",
+                    "Weight":  1
+                },
+    "Phoenix":  {
+                    "Group":  "Mythical",
+                    "MeshId":  "rbxassetid://90350187649026",
+                    "TextureID":  "rbxassetid://104667801627883",
+                    "Weight":  1
+                },
+    "PrimordialDragon":  {
+                             "Group":  "Cosmic",
+                             "MeshId":  "rbxassetid://80964724504318",
+                             "TextureID":  "rbxassetid://75548980939891",
+                             "Weight":  1
+                         },
+    "RedFox":  {
+                   "Group":  "Starter",
+                   "MeshId":  "rbxassetid://100730424499333",
+                   "TextureID":  "rbxassetid://119645645277709",
+                   "Weight":  1
+               },
+    "RegalLion":  {
+                      "Group":  "Starter",
+                      "MeshId":  "rbxassetid://129314119639865",
+                      "TextureID":  "rbxassetid://111059085080258",
+                      "Weight":  1
+                  },
+    "SolarEclipseDragon":  {
+                               "Group":  "Mythical",
+                               "MeshId":  "rbxassetid://113895071277867",
+                               "TextureID":  "rbxassetid://112634012231545",
+                               "Weight":  1
+                           },
+    "Thunderbird":  {
+                        "Group":  "Apex",
+                        "MeshId":  "rbxassetid://123646228732104",
+                        "TextureID":  "rbxassetid://118946196592503",
+                        "Weight":  1
+                    },
+    "VoltCheetah":  {
+                        "Group":  "Apex",
+                        "MeshId":  "rbxassetid://112413773699281",
+                        "TextureID":  "rbxassetid://86888886253329",
+                        "Weight":  1
+                    },
+    "Wyvern":  {
+                   "Group":  "Apex",
+                   "MeshId":  "rbxassetid://114908406113971",
+                   "TextureID":  "rbxassetid://115141799002271",
+                   "Weight":  1
+               }
+}

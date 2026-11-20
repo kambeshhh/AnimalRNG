@@ -1,0 +1,19 @@
+# Roblox / Rojo
+*.rbxl.lock
+*.rbxlx.lock
+sourcemap.json
+roblox.toml
+
+# Large binary art (re-uploaded IDs live in assets/manifest.json)
+*.fbx
+*.blend
+*.blend1
+*.zip
+assets/**/*.png
+!assets/previews/*.png
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+__pycache__/
