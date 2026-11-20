@@ -16,7 +16,11 @@ local waiting = false
 local autoMulti = false
 local C = Color3.fromRGB
 
-local function canQuick() return State.Data and State.Data.Rank >= Config.Roll.QuickRollRank end
+local function canQuick()
+	return player:GetAttribute("CanQuick") == true
+		or (State.Data and (State.Data.Rank >= Config.Roll.QuickRollRank or (State.Data.Passes and State.Data.Passes.SwiftRolls)))
+		or false
+end
 local function canMulti() return player:GetAttribute("CanMulti") == true end
 local function cooldown(multi)
 	if multi then return player:GetAttribute("RollCooldownMulti") or Config.Roll.BaseCooldown * Config.Roll.MultiCooldownMult end
@@ -54,13 +58,14 @@ function Roll.Start()
 	dock.MultiButton.Activated:Connect(function() Roll.Request(true) end)
 	dock.AutoToggle.Activated:Connect(function() State.Auto = not State.Auto; refresh() end)
 	local function toggleFast()
-		if not canQuick() then UI.Toast("Fast Roll unlocks at Hunter Rank " .. Config.Roll.QuickRollRank, Config.UI.Muted); return end
+		if not canQuick() then UI.Toast("Fast Roll unlocks at Hunter Rank " .. Config.Roll.QuickRollRank .. " (or the Swift Rolls Pass)", Config.UI.Muted); return end
 		State.Quick = not State.Quick; refresh()
 		UI.Toast(State.Quick and "⚡ Fast Roll ON — shorter cooldown & reveals" or "Fast Roll OFF", C(255, 180, 60))
 	end
 	dock.QuickToggle.Activated:Connect(toggleFast)
 	State.Changed:Connect(refresh)
 	player:GetAttributeChangedSignal("CanMulti"):Connect(refresh)
+	player:GetAttributeChangedSignal("CanQuick"):Connect(refresh)
 	UIS.InputBegan:Connect(function(input, gp)
 		if gp then return end
 		if input.KeyCode == Enum.KeyCode.R then Roll.Request(false)

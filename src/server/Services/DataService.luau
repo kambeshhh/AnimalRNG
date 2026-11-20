@@ -1,6 +1,8 @@
--- DataService: persistent player data (pcall retries + BindToClose), inventory helpers, client sync
+-- DataService: ProfileStore-pattern session-locked player data (UpdateAsync session lock + BindToClose + plain-table sanitization)
 local Players = game:GetService("Players")
 local DataStoreService = game:GetService("DataStoreService")
+local RunService = game:GetService("RunService")
+local HttpService = game:GetService("HttpService")
 local RS = game:GetService("ReplicatedStorage")
 local Config = require(RS.Modules.Config)
 local AnimalData = require(RS.Modules.AnimalData)
@@ -10,7 +12,9 @@ local DataService = {}
 local S
 local store
 pcall(function() store = DataStoreService:GetDataStore(Config.DataStoreName) end)
-local profiles = {} -- [Player] = { Data, CanSave, Session = { Start, Gifts } }
+local SESSION_ID = (game.JobId ~= "" and game.JobId) or ("Studio_" .. HttpService:GenerateGUID(false))
+local LOCK_TTL = 210 -- seconds before an orphaned lock from a crashed server can be claimed
+local profiles = {} -- [Player] = { Data, CanSave, Released, Session = { Start, Gifts } }
 
 local function default()
 	return {
@@ -18,7 +22,7 @@ local function default()
 		Materials = { FrostCore = 0, MagmaHeart = 0, EclipseDust = 0 },
 		Totems = {}, EquippedTotems = {}, Potions = { Lucky = 0, Elixir = 0 }, LuckyUntil = 0, ElixirArmed = false,
 		Essence = 0, Rank = 1, Index = {}, NextId = 1,
-		Stats = { Rolls = 0, RarestPull = 0, RarestName = "", AlphaTime = 0, Crafts = 0, Forges = 0, Sacrifices = 0, BonusCounter = 0 },
+		Stats = { Rolls = 0, RarestPull = 0, RarestName = "", AlphaTime = 0, Crafts = 0, Forges = 0, Sacrifices = 0, BonusCounter = 0, UnluckyStreak = 0, StreakStacks = 0 },
 		Vault = {}, Settings = { CutsceneMin = 4, ReduceOthersFX = false }, LuckBoostUntil = 0, Purchases = {}, StudioPasses = {},
 	}
 end
@@ -29,6 +33,28 @@ local function reconcile(data, def)
 		elseif type(v) == "table" and type(data[k]) == "table" and next(v) ~= nil and #v == 0 then reconcile(data[k], v) end
 	end
 	return data
+end
+
+-- Plain, serializable data only. Strips any Instance, userdata, function, or thread before saving.
+local function sanitizePlain(v: any): any
+	local t = typeof(v)
+	if t == "number" then
+		if v ~= v or v == math.huge or v == -math.huge then return 0 end
+		return v
+	elseif t == "string" or t == "boolean" then
+		return v
+	elseif t == "table" then
+		local out = {}
+		for k, val in pairs(v) do
+			local kt = typeof(k)
+			if (kt == "string" or kt == "number") and k ~= "_SessionLock" then
+				local sv = sanitizePlain(val)
+				if sv ~= nil then out[k] = sv end
+			end
+		end
+		return out
+	end
+	return nil
 end
 
 function DataService.Init(services) S = services end
@@ -106,22 +132,51 @@ function DataService.Sync(player)
 		TotemSlots = S.TotemService and S.TotemService.Slots(player) or 1,
 		Settings = d.Settings, LuckBoostUntil = d.LuckBoostUntil,
 		Passes = S.MonetizationService and S.MonetizationService.OwnedPasses(player) or {},
+		PaidRandomRestricted = S.MonetizationService and S.MonetizationService.IsPaidRandomRestricted(player) or false,
 	})
 	DataService.UpdateLeaderstats(player)
 end
 
 function DataService.Load(player)
 	local data, canSave = nil, store ~= nil
+	local lockConflict = false
 	if store then
 		for attempt = 1, 3 do
-			local ok, res = pcall(function() return store:GetAsync("u_" .. player.UserId) end)
-			if ok then data = res; break end
-			warn("[DataService] load failed for " .. player.Name .. ": " .. tostring(res))
-			if string.find(tostring(res), "403") or string.find(tostring(res), "Studio") then canSave = false; break end
+			if player.Parent ~= Players then return nil end
+			lockConflict = false
+			local ok, res = pcall(function()
+				return store:UpdateAsync("u_" .. player.UserId, function(old)
+					if type(old) == "table" and type(old._SessionLock) == "table" then
+						local lock = old._SessionLock
+						local age = os.time() - (lock.Timestamp or 0)
+						if lock.JobId and lock.JobId ~= "" and lock.JobId ~= SESSION_ID and age < LOCK_TTL and attempt < 3 then
+							lockConflict = true
+							return nil -- wait for other server to release on server-hop
+						end
+					end
+					local clean = type(old) == "table" and old or default()
+					clean._SessionLock = { JobId = SESSION_ID, PlaceId = game.PlaceId, Timestamp = os.time() }
+					return clean
+				end)
+			end)
+			if ok and not lockConflict then
+				data = res
+				break
+			end
+			if not ok then
+				warn("[DataService] load failed for " .. player.Name .. ": " .. tostring(res))
+				if string.find(tostring(res), "403") or string.find(tostring(res), "Studio") then canSave = false; break end
+			end
 			if attempt == 3 then canSave = false end
 			task.wait(1.5)
 		end
 	end
+	-- Anti-exploit & session-lock safety: kick on live servers if profile session could not be established
+	if not canSave and not RunService:IsStudio() then
+		player:Kick("Data could not load. Please rejoin.")
+		return nil
+	end
+	if type(data) == "table" then data._SessionLock = nil end
 	data = reconcile(type(data) == "table" and data or default(), default())
 	-- v2 items: {Animal, Tier, Mutation}. Old {Titan, Color} items migrate in place; nothing is dropped unless its creature no longer exists.
 	for _, list in ipairs({ data.Inventory, data.Vault }) do
@@ -164,25 +219,54 @@ function DataService.Load(player)
 		data.Index.MeadowRabbit = true
 	end
 	if not DataService.FindItem(data, data.Equipped) then data.Equipped = data.Inventory[1].Id end
-	profiles[player] = { Data = data, CanSave = canSave, Session = { Start = workspace:GetServerTimeNow(), Gifts = {} } }
+	profiles[player] = { Data = data, CanSave = canSave, Released = false, Session = { Start = workspace:GetServerTimeNow(), Gifts = {} } }
 	if not canSave then warn("[DataService] saving disabled for " .. player.Name .. " (enable Studio API access to persist)") end
 	DataService.UpdateLeaderstats(player)
 	return data
 end
 
-function DataService.Save(player)
+function DataService.Save(player, releaseLock: boolean?)
 	local p = profiles[player]
-	if not p or not p.CanSave or not store then return end
+	if not p or not p.CanSave or p.Released or not store then return end
+	local stolen = false
+	local payload = sanitizePlain(p.Data)
 	for attempt = 1, 3 do
-		local ok, err = pcall(function() store:UpdateAsync("u_" .. player.UserId, function() return p.Data end) end)
-		if ok then return end
+		local ok, err = pcall(function()
+			store:UpdateAsync("u_" .. player.UserId, function(old)
+				if type(old) == "table" and type(old._SessionLock) == "table" then
+					local lock = old._SessionLock
+					if lock.JobId and lock.JobId ~= "" and lock.JobId ~= SESSION_ID then
+						stolen = true
+						return nil -- another server took the session lock; do not overwrite
+					end
+				end
+				if releaseLock then
+					payload._SessionLock = nil
+				else
+					payload._SessionLock = { JobId = SESSION_ID, PlaceId = game.PlaceId, Timestamp = os.time() }
+				end
+				return payload
+			end)
+		end)
+		if ok then
+			if stolen then
+				p.Released = true
+				profiles[player] = nil
+				if player.Parent == Players then
+					player:Kick("Your data was loaded in another server. Please rejoin.")
+				end
+			elseif releaseLock then
+				p.Released = true
+			end
+			return
+		end
 		warn("[DataService] save attempt " .. attempt .. " failed for " .. player.Name .. ": " .. tostring(err))
 		task.wait(1)
 	end
 end
 
 function DataService.Release(player)
-	DataService.Save(player)
+	DataService.Save(player, true)
 	profiles[player] = nil
 end
 
@@ -191,7 +275,7 @@ function DataService.Start()
 		local pending = 0
 		for player in pairs(profiles) do
 			pending += 1
-			task.spawn(function() DataService.Save(player); pending -= 1 end)
+			task.spawn(function() DataService.Release(player); pending -= 1 end)
 		end
 		local t = os.clock()
 		while pending > 0 and os.clock() - t < 25 do task.wait() end
@@ -199,7 +283,7 @@ function DataService.Start()
 	task.spawn(function()
 		while true do
 			task.wait(90)
-			for player in pairs(profiles) do task.spawn(DataService.Save, player) end
+			for player in pairs(profiles) do task.spawn(DataService.Save, player, false) end
 		end
 	end)
 end

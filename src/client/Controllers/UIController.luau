@@ -138,28 +138,42 @@ end
 render.Shop = function(p, data)
 	local ok, lb = pcall(function() return HttpService:JSONDecode(player:GetAttribute("LuckBreakdown") or "{}") end)
 	lb = ok and lb or {}
+	local restricted = player:GetAttribute("PaidRandomRestricted") == true or (data.PaidRandomRestricted == true)
 	p.Subtitle.Text = "Your Luck: x" .. NF.Luck(lb.Total or 1) .. "   ·   free bonuses add, paid boosts multiply (capped at x" .. Config.Monetization.PaidLuckCap .. ")"
 	list(p.Body)
-	local bd = row(p.Body, 1, 96)
-	local names = { Base = "Base", Rank = "Hunter Rank", Totems = "Totems", AlphaZone = "Alpha Zone", Potion = "Potion", Weather = "Weather", Index = "Index" }
+	local bd = row(p.Body, 1, 114)
+	local names = { Base = "Base", Rank = "Hunter Rank", Streak = "Streak Luck", Totems = "Totems", AlphaZone = "Alpha Zone", Potion = "Potion", Weather = "Weather", Index = "Index" }
 	local addParts, multParts = {}, {}
-	for _, k in ipairs({ "Base", "Rank", "Totems", "AlphaZone", "Potion", "Weather", "Index" }) do
+	for _, k in ipairs({ "Base", "Rank", "Streak", "Totems", "AlphaZone", "Potion", "Weather", "Index" }) do
 		local v = lb.Add and lb.Add[k] or 0
 		if v > 0 then table.insert(addParts, string.format("%s <font color='#78FFAA'>+%s</font>", names[k], NF.Luck(v))) end
 	end
 	for k, v in pairs(lb.Mult or {}) do table.insert(multParts, string.format("%s <font color='#FFD166'>x%s</font>", k, NF.Luck(v))) end
-	UI.Label(bd, "🍀 LUCK BREAKDOWN", UDim2.new(1, -24, 0, 22), UDim2.fromOffset(12, 6), 17, Config.UI.Gold, UI.Display, { TextXAlignment = Enum.TextXAlignment.Left })
+	local streakCur = (data.Stats and data.Stats.UnluckyStreak or 0) % 100
+	local streakPct = math.floor(((lb.Add and lb.Add.Streak or 0) * 100) + 0.5)
+	UI.Label(bd, "🍀 LUCK BREAKDOWN  ·  <font color='#78FFAA'>Streak Luck +" .. streakPct .. "% (" .. streakCur .. "/100 to next +2%, max +50%)</font>", UDim2.new(1, -24, 0, 22), UDim2.fromOffset(12, 6), 16, Config.UI.Gold, UI.Display, { TextXAlignment = Enum.TextXAlignment.Left })
 	UI.Label(bd, "Free:  " .. table.concat(addParts, "  ·  "), UDim2.new(1, -24, 0, 34), UDim2.fromOffset(12, 30), 14, Config.UI.Text, Enum.Font.GothamBold, { TextXAlignment = Enum.TextXAlignment.Left })
-	UI.Label(bd, "Paid:  " .. (#multParts > 0 and table.concat(multParts, "  ·  ") or "<font color='#9AA0C0'>none active</font>"), UDim2.new(1, -24, 0, 22), UDim2.fromOffset(12, 66), 14, Config.UI.Text, Enum.Font.GothamBold, { TextXAlignment = Enum.TextXAlignment.Left })
+	UI.Label(bd, "Paid:  " .. (#multParts > 0 and table.concat(multParts, "  ·  ") or "<font color='#9AA0C0'>none active</font>") .. "   ·   <font color='#B4BEDC'>Displayed odds in Index update live while boosts are active</font>", UDim2.new(1, -24, 0, 22), UDim2.fromOffset(12, 66), 13, Config.UI.Text, Enum.Font.GothamBold, { TextXAlignment = Enum.TextXAlignment.Left })
+	if restricted then
+		UI.Label(bd, "ℹ️ Paid probability modifiers are restricted in your region — all luck progression is earnable free via Streak Luck, Ranks, Totems & Potions.", UDim2.new(1, -24, 0, 20), UDim2.fromOffset(12, 90), 12, C(255, 210, 120), Enum.Font.GothamBold, { TextXAlignment = Enum.TextXAlignment.Left })
+	else
+		UI.Label(bd, "ℹ️ Probability Disclosure: Luck divides tier odds denominators (e.g. at x10 Luck, a 1-in-10,000 tier becomes 1-in-1,000). Every roll returns an animal.", UDim2.new(1, -24, 0, 20), UDim2.fromOffset(12, 90), 12, Config.UI.Muted, Enum.Font.GothamBold, { TextXAlignment = Enum.TextXAlignment.Left })
+	end
 	local M = Config.Monetization
 	local order = 10
 	local function item(kind, key, def, owned, extra)
 		order += 1
-		local f = row(p.Body, order, 70)
+		local isRestrItem = restricted and def.RandomModifier == true
+		local f = row(p.Body, order, 74)
 		UI.Label(f, def.Icon .. "  " .. def.Display, UDim2.new(1, -190, 0, 28), UDim2.fromOffset(14, 8), 20, Config.UI.Text, UI.Display, { TextXAlignment = Enum.TextXAlignment.Left })
-		UI.Label(f, (def.Desc or (def.Server and "Boosts EVERY player in the server" or "Stacks with your free luck")) .. (extra or ""), UDim2.new(1, -190, 0, 20), UDim2.fromOffset(14, 38), 14, Config.UI.Muted, Enum.Font.GothamBold, { TextXAlignment = Enum.TextXAlignment.Left })
-		UI.Button(f, owned and "OWNED" or ("R$ " .. def.Robux), UDim2.fromOffset(150, 46), owned and C(60, 150, 100) or C(60, 200, 110), function() if not owned then act("Buy", kind, key) end end,
-			{ AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -14, 0.5, 0) })
+		local desc = isRestrItem and "Restricted in your region — earn free Luck via Streak Luck, Ranks, Totems & Altar Potions"
+			or ((def.Desc or (def.Server and "Boosts EVERY player in the server" or "Stacks with your free luck")) .. (extra or ""))
+		UI.Label(f, desc, UDim2.new(1, -190, 0, 28), UDim2.fromOffset(14, 38), 13, isRestrItem and C(255, 195, 110) or Config.UI.Muted, Enum.Font.GothamBold, { TextXAlignment = Enum.TextXAlignment.Left })
+		local btnLabel = owned and "OWNED" or (isRestrItem and "FREE PATH" or ("R$ " .. def.Robux))
+		local btnColor = owned and C(60, 150, 100) or (isRestrItem and C(60, 68, 96) or C(60, 200, 110))
+		UI.Button(f, btnLabel, UDim2.fromOffset(150, 46), btnColor, function()
+			if not owned then act("Buy", kind, key) end
+		end, { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -14, 0.5, 0) })
 	end
 	local passes = data.Passes or {}
 	for _, key in ipairs(M.PassOrder) do item("Pass", key, M.Passes[key], passes[key]) end
@@ -211,13 +225,31 @@ local function viewport(parent, animal, size, pos, discovered)
 	return vp, function() end
 end
 
+local function currentWeatherBoosts()
+	local w = RS:GetAttribute("Weather") or "Sunny"
+	local wInfo = Config.Weather.Types[w] or Config.Weather.Types.Sunny
+	local boosts = {}
+	for k, v in pairs(wInfo.Boost or {}) do boosts[k] = v end
+	for name, a in pairs(AnimalData.Animals) do
+		if a.Biome == w and not a.Exclusive then boosts[name] = math.max(boosts[name] or 1, 3) end
+	end
+	return boosts, wInfo
+end
+
 render.Index = function(p, data)
 	if indexSpin then indexSpin:Disconnect(); indexSpin = nil end
 	local n = 0; for _ in pairs(data.Index) do n += 1 end
 	local total = #AnimalData.Order * #AnimalData.MutationOrder
-	p.Subtitle.Text = string.format("%d / %d discovered  •  +%d%% Luck  •  +%d%% Coins (permanent)", n, total, n * Config.Luck.IndexPerEntry * 100, n)
 	list(p.Body)
 	local spinners = {}
+	local liveUpdaters = {}
+	local function updateHeader()
+		local luck = math.max(1, player:GetAttribute("Luck") or 1)
+		local _, wInfo = currentWeatherBoosts()
+		p.Subtitle.Text = string.format("%d / %d discovered  •  +%d%% Luck  •  +%d%% Coins  •  Live Luck ×%s (%s)",
+			n, total, n * Config.Luck.IndexPerEntry * 100, n, NF.Luck(luck), wInfo.Display)
+	end
+	updateHeader()
 	local function dots(parent, animal, pos)
 		local holder = Instance.new("Frame"); holder.BackgroundTransparency = 1; holder.Position = pos; holder.Size = UDim2.new(1, -12, 0, 12); holder.Parent = parent
 		local l = Instance.new("UIListLayout"); l.FillDirection = Enum.FillDirection.Horizontal; l.Padding = UDim.new(0, 4); l.Parent = holder
@@ -240,7 +272,16 @@ render.Index = function(p, data)
 	vp.Parent = top; table.insert(spinners, spin)
 	UI.Label(top, "UNATTAINABLE // MYTHIC GRAIL", UDim2.new(1, -200, 0, 22), UDim2.fromOffset(186, 14), 15, C(255, 225, 150), UI.Display, { TextXAlignment = Enum.TextXAlignment.Left })
 	UI.Label(top, found and AnimalData.Animals[ou].Display or "???", UDim2.new(1, -200, 0, 40), UDim2.fromOffset(186, 38), 34, Color3.new(1, 1, 1), UI.Display, { TextXAlignment = Enum.TextXAlignment.Left })
-	UI.Label(top, "Tier 28 exclusive  •  " .. AnimalData.FormatRarity(AnimalData.Tiers[AnimalData.TierCount].Min), UDim2.new(1, -200, 0, 20), UDim2.fromOffset(186, 82), 14, C(210, 205, 240), Enum.Font.GothamBold, { TextXAlignment = Enum.TextXAlignment.Left })
+	local ouBase = AnimalData.Tiers[AnimalData.TierCount].Min
+	local ouOddsLbl = UI.Label(top, "", UDim2.new(1, -200, 0, 20), UDim2.fromOffset(186, 82), 13, C(210, 205, 240), Enum.Font.GothamBold, { TextXAlignment = Enum.TextXAlignment.Left })
+	local function updateOuroOdds()
+		local luck = math.max(1, player:GetAttribute("Luck") or 1)
+		local liveT28 = AnimalData.EffectiveTierOdds(AnimalData.TierCount, luck)
+		ouOddsLbl.Text = string.format("Tier 28 exclusive  •  Base %s  •  <font color='#78FFAA'>Live %s</font>",
+			AnimalData.FormatRarity(ouBase), AnimalData.FormatRarityShort(liveT28))
+	end
+	updateOuroOdds()
+	table.insert(liveUpdaters, updateOuroOdds)
 	UI.Label(top, found and "Discovered — the serpent that devours eternity." or "Roll Tier 28 to reveal it.", UDim2.new(1, -200, 0, 18), UDim2.fromOffset(186, 106), 13, Config.UI.Muted, Enum.Font.GothamMedium, { TextXAlignment = Enum.TextXAlignment.Left })
 	dots(top, ou, UDim2.fromOffset(186, 136))
 	-- 2) groups (rarest first), 4 creatures per row
@@ -265,16 +306,36 @@ render.Index = function(p, data)
 				local v, sp = viewport(f, animal, UDim2.new(1, 0, 0, 82), UDim2.fromOffset(0, 2), fnd); v.Parent = f
 				if fnd then table.insert(spinners, sp) else sp(0.6) end
 				UI.Label(f, fnd and a.Display or "???", UDim2.new(1, -12, 0, 22), UDim2.fromOffset(6, 84), 15, fnd and Color3.new(1, 1, 1) or Config.UI.Muted, UI.Display, { TextScaled = true })
-				UI.Label(f, "base " .. AnimalData.FormatRarityShort(math.floor(a.Odds + 0.5)), UDim2.new(1, -12, 0, 16), UDim2.fromOffset(6, 106), 12, Config.UI.Muted, Enum.Font.GothamBold)
+				local baseOdds = math.floor(a.Odds + 0.5)
+				local oddsLbl = UI.Label(f, "", UDim2.new(1, -12, 0, 16), UDim2.fromOffset(6, 106), 11, Config.UI.Muted, Enum.Font.GothamBold, { TextScaled = true })
+				local function updateCardOdds()
+					local boosts = currentWeatherBoosts()
+					local liveOdds, bMult = AnimalData.EffectiveCreatureOdds(animal, boosts)
+					local liveRounded = math.max(1, math.floor(liveOdds + 0.5))
+					if bMult > 1 then
+						oddsLbl.Text = string.format("base %s · <font color='#78FFAA'>live %s (%dx)</font>", AnimalData.FormatRarityShort(baseOdds), AnimalData.FormatRarityShort(liveRounded), bMult)
+					else
+						oddsLbl.Text = string.format("base %s · <font color='#B4BEDC'>live %s</font>", AnimalData.FormatRarityShort(baseOdds), AnimalData.FormatRarityShort(liveRounded))
+					end
+				end
+				updateCardOdds()
+				table.insert(liveUpdaters, updateCardOdds)
 				dots(f, animal, UDim2.fromOffset(8, 128))
 			end
 		end
 	end
 	local t0 = os.clock()
+	local lastLiveUpdate = t0
 	indexSpin = RunService.RenderStepped:Connect(function()
 		if open ~= "Index" then indexSpin:Disconnect(); indexSpin = nil; return end
-		local t = (os.clock() - t0) * 0.8
+		local now = os.clock()
+		local t = (now - t0) * 0.8
 		for _, f in ipairs(spinners) do f(t) end
+		if now - lastLiveUpdate >= 0.5 then
+			lastLiveUpdate = now
+			updateHeader()
+			for _, fn in ipairs(liveUpdaters) do fn() end
+		end
 	end)
 	footer(p, {})
 end
@@ -627,7 +688,8 @@ function Ctl.Start()
 		pill.Timer.Text = string.format("%d:%02d", left // 60, math.floor(left % 60))
 		local luck = player:GetAttribute("Luck") or 1
 		local bName, bMult = next(info.Boost)
-		local boost = bName and string.format("  •  %dx %s", bMult, AnimalData.Animals[bName].Display:match("(%S+)$")) or ""
+		local bAnimal = bName and AnimalData.Animals[bName]
+		local boost = (bAnimal and bMult) and string.format("  •  %dx %s", bMult, bAnimal.Display:match("(%S+)$") or bAnimal.Display) or ""
 		gui.RollDock.Chips.Luck.Value.Text = "🍀 Luck ×" .. NF.Luck(luck)
 		gui.RollDock.Chips.Weather.Value.Text = string.format("%s %s%s", info.Icon, info.Display, boost)
 		gui.TopCenter.AlphaBadge.Visible = player:GetAttribute("InAlpha") == true

@@ -12,23 +12,37 @@ for _, name in ipairs(ORDER) do S[name] = require(script.Parent.Services:WaitFor
 for _, name in ipairs(ORDER) do if S[name].Init then S[name].Init(S) end end
 for _, name in ipairs(ORDER) do if S[name].Start then task.spawn(S[name].Start) end end
 
+local lastAction = {} -- [player] = { [action] = os.clock() }
+local ACTION_COOLDOWN = { Equip = 0.25, Buy = 0.25, Forge = 0.2, Sacrifice = 0.2, CraftTotem = 0.2 }
+local DEFAULT_ACTION_CD = 0.08
+
 Net.Get("Action").OnServerEvent:Connect(function(player, action, ...)
-	local handler = typeof(action) == "string" and S.Actions[action]
+	if typeof(action) ~= "string" then return end
+	local handler = S.Actions[action]
 	if not handler or not S.DataService.Get(player) then return end
+	local now = os.clock()
+	local pcd = lastAction[player]
+	if not pcd then pcd = {}; lastAction[player] = pcd end
+	local cd = ACTION_COOLDOWN[action] or DEFAULT_ACTION_CD
+	if pcd[action] and (now - pcd[action]) < cd then return end -- silently drop remote spam
+	pcd[action] = now
 	local ok, err = pcall(handler, player, ...)
 	if not ok then warn("[Action " .. action .. "] " .. tostring(err)) end
 end)
 
 local function onPlayer(player)
-	S.DataService.Load(player)
-	if not player.Parent then return end
+	local loaded = S.DataService.Load(player)
+	if not loaded or not player.Parent then return end
 	S.ProgressionService.CheckRanks(player)
 	S.MorphService.Spawn(player, false)
 	S.DataService.Sync(player)
 end
 Players.PlayerAdded:Connect(onPlayer)
 for _, p in ipairs(Players:GetPlayers()) do task.spawn(onPlayer, p) end
-Players.PlayerRemoving:Connect(function(p) S.DataService.Release(p) end)
+Players.PlayerRemoving:Connect(function(p)
+	lastAction[p] = nil
+	S.DataService.Release(p)
+end)
 
 -- Studio-only test hook (never exists on live servers)
 if game:GetService("RunService"):IsStudio() then

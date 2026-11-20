@@ -4,7 +4,21 @@ local NF = {}
 local SUFFIX = { "", "K", "M", "B", "T", "Qa", "Qi", "Sx", "Sp", "Oc", "No", "Dc" }
 
 function NF.Comma(n: number): string
-	local s = string.format("%.0f", math.floor(math.abs(n)))
+	if n ~= n or n == math.huge or n == -math.huge then return "0" end
+	local a = math.floor(math.abs(n))
+	local s: string
+	if a >= 1e15 then
+		local mant, exp = string.format("%.14e", a):match("^([%d%.]+)e%+?(%d+)$")
+		if mant and exp then
+			local digits = mant:gsub("%.", "")
+			local e = tonumber(exp) or 15
+			s = digits .. string.rep("0", math.max(0, e - (#digits - 1)))
+		else
+			s = string.format("%.0f", a)
+		end
+	else
+		s = string.format("%.0f", a)
+	end
 	local out = s:reverse():gsub("(%d%d%d)", "%1,"):reverse()
 	if out:sub(1, 1) == "," then out = out:sub(2) end
 	return (n < 0 and "-" or "") .. out

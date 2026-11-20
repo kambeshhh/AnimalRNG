@@ -57,7 +57,13 @@ function Anim.Start()
 					local beat = air and 9 or (3.5 + amp * 6)
 					w.Transform = CFrame.Angles(math.sin(t * beat) * (air and 0.55 or 0.12 + amp * 0.3), 0, 0)
 				end
-				if r.root then r.root.Transform = air and CFrame.new() or CFrame.new(0, math.abs(math.sin(t * freq)) * 0.12 * amp, 0) end
+				if c:GetAttribute("Showcase") then
+					if r.root then
+						r.root.Transform = CFrame.new(0, math.sin(t * 1.8) * 0.45, 0) * CFrame.Angles(0, t * 1.1, math.sin(t * 1.4) * 0.08)
+					end
+				elseif r.root then
+					r.root.Transform = air and CFrame.new() or CFrame.new(0, math.abs(math.sin(t * freq)) * 0.12 * amp, 0)
+				end
 				-- TITAN footsteps: subtle camera shake for the local player
 				if p == player and c:GetAttribute("Titan") and spd > 6 and not air and hum then
 					if t > nextStep then

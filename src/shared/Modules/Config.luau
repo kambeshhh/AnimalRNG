@@ -35,16 +35,16 @@ Config.Cutscene = {
 Config.Monetization = {
 	PaidLuckCap = 4,
 	Passes = {
-		LuckPass   = { Display = "Lucky Paws",   Icon = "🍀", Id = 0, Robux = 299, LuckMult = 1.5,  Desc = "Permanent x1.5 Luck" },
-		SwiftRolls = { Display = "Swift Rolls",  Icon = "⚡", Id = 0, Robux = 199, SpeedMult = 1.25, Desc = "Permanent +25% roll speed" },
-		MultiRoll  = { Display = "5x Roll Pass", Icon = "🎰", Id = 0, Robux = 149, Desc = "Unlock 5x Roll immediately" },
-		VIPAdmin   = { Display = "VIP Admin",    Icon = "👑", Id = 0, Robux = 10000, Desc = "Fireworks, confetti, spotlight & server shouts (cosmetic only)" },
+		LuckPass   = { Display = "Lucky Paws",   Icon = "🍀", Id = 0, Robux = 299, LuckMult = 1.5,  RandomModifier = true, Desc = "Permanent x1.5 Paid Luck multiplier (divides tier odds denominators; capped at x4 total paid luck)" },
+		SwiftRolls = { Display = "Swift Rolls",  Icon = "⚡", Id = 0, Robux = 199, SpeedMult = 1.25, Desc = "Permanent +25% roll speed & unlocks Fast Roll immediately (no odds change)" },
+		MultiRoll  = { Display = "5x Roll Pass", Icon = "🎰", Id = 0, Robux = 149, Desc = "Unlock 5x Roll immediately (no odds change)" },
+		VIPAdmin   = { Display = "VIP Admin",    Icon = "👑", Id = 0, Robux = 10000, Desc = "Fireworks, confetti, spotlight & server shouts (cosmetic only; no odds change)" },
 	},
 	PassOrder = { "LuckPass", "SwiftRolls", "MultiRoll", "VIPAdmin" },
 	Products = {
-		LuckBoost15 = { Display = "Luck x2 · 15 min", Icon = "🌟", Id = 0, Robux = 49,  LuckMult = 2, Minutes = 15 },
-		LuckBoost60 = { Display = "Luck x2 · 60 min", Icon = "💫", Id = 0, Robux = 149, LuckMult = 2, Minutes = 60 },
-		ServerLuck  = { Display = "SERVER Luck x2 · 10 min", Icon = "🌍", Id = 0, Robux = 199, LuckMult = 2, Minutes = 10, Server = true },
+		LuckBoost15 = { Display = "Luck x2 · 15 min", Icon = "🌟", Id = 0, Robux = 49,  LuckMult = 2, Minutes = 15, RandomModifier = true, Desc = "x2 Paid Luck multiplier for 15 min (divides tier odds denominators; live odds update while active)" },
+		LuckBoost60 = { Display = "Luck x2 · 60 min", Icon = "💫", Id = 0, Robux = 149, LuckMult = 2, Minutes = 60, RandomModifier = true, Desc = "x2 Paid Luck multiplier for 60 min (divides tier odds denominators; live odds update while active)" },
+		ServerLuck  = { Display = "SERVER Luck x2 · 10 min", Icon = "🌍", Id = 0, Robux = 199, LuckMult = 2, Minutes = 10, Server = true, RandomModifier = true, Desc = "x2 Paid Luck multiplier for every player in the server for 10 min (live odds update while active)" },
 	},
 	ProductOrder = { "LuckBoost15", "LuckBoost60", "ServerLuck" },
 }
@@ -52,6 +52,9 @@ Config.Monetization = {
 Config.Luck = {
 	AlphaZone = 1.0,           -- +100%
 	IndexPerEntry = 0.02,      -- +2% per Collection Index entry
+	StreakPer100 = 0.02,       -- +2% per 100 unlucky rolls without Epic+ (free, unsellable)
+	StreakCap = 0.50,          -- stacks up to +50%
+	StreakResetTier = 5,       -- Tier 5 (Epic) or better
 	Weather = { Sunny = 0, Blizzard = 0.25, Volcanic = 0.25, Eclipse = 0.5 },
 	MutationLuckExponent = 0.5,-- mutations scale with sqrt(luck)
 }

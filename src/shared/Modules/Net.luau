@@ -39,12 +39,12 @@ end
 
 function Net.Get(name: string): RemoteEvent
 	assert(table.find(Net.Events, name), "Unknown remote: " .. name)
-	function Net.GetFunction(name: string): RemoteFunction
-	assert(table.find(Net.Functions, name), "Unknown remote function: " .. name)
 	return Net.Folder():WaitForChild(name)
 end
 
-return Net.Folder():WaitForChild(name)
+function Net.GetFunction(name: string): RemoteFunction
+	assert(table.find(Net.Functions, name), "Unknown remote function: " .. name)
+	return Net.Folder():WaitForChild(name)
 end
 
 return Net

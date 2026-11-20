@@ -25,9 +25,13 @@ local META = {
 	HoneyBadger        = { "Honey Badger",         "Starter",  "Dash",       27, C(225, 225, 225) },
 	BoldTiger          = { "Bold Tiger",           "Starter",  "Dash",       30, C(255, 150, 50) },
 	Crocodile          = { "Crocodile",            "Starter",  "Slam",       24, C(120, 170, 100) },
+	WildBoar           = { "Wild Boar",            "Starter",  "Dash",       28, C(170, 120, 90) },
+	GiantPanda         = { "Giant Panda",          "Starter",  "Slam",       25, C(230, 235, 245) },
 	VoltCheetah        = { "Volt Cheetah",         "Apex",     "Blink",      34, C(255, 230, 60) },
 	FrostbiteWolf      = { "Frostbite Wolf",       "Apex",     "FrostPulse", 30, C(140, 220, 255), "Blizzard" },
+	WoollyMammoth      = { "Woolly Mammoth",       "Apex",     "Slam",       24, C(165, 130, 100), "Blizzard" },
 	MagmaGrizzly       = { "Magma Grizzly",        "Apex",     "Slam",       25, C(255, 110, 40),  "Volcanic" },
+	LavaSalamander     = { "Lava Salamander",      "Apex",     "Beam",       29, C(255, 130, 50),  "Volcanic" },
 	Thunderbird        = { "Thunderbird",          "Apex",     "Blink",      32, C(110, 170, 255) },
 	Basilisk           = { "Basilisk",             "Apex",     "FrostPulse", 26, C(90, 150, 170) },
 	Wyvern             = { "Wyvern",               "Apex",     "Beam",       30, C(200, 120, 120) },
@@ -43,6 +47,7 @@ local META = {
 	Hydra              = { "Hydra",                "Mythical", "FrostPulse", 26, C(80, 170, 110) },
 	Leviathan          = { "Leviathan",            "Cosmic",   "FrostPulse", 30, C(70, 140, 255),  "Blizzard" },
 	Kraken             = { "Kraken",               "Cosmic",   "Slam",       26, C(60, 110, 140) },
+	VoidStag           = { "Void Stag",            "Cosmic",   "Blink",      33, C(160, 110, 255), "Eclipse" },
 	InfinityPhoenix    = { "Infinity Phoenix",     "Cosmic",   "Beam",       34, C(190, 120, 255), "Eclipse" },
 	PrimordialDragon   = { "Primordial Dragon",    "Cosmic",   "Beam",       32, C(255, 80, 60),   "Eclipse" },
 	Ouroboros          = { "Ouroboros",            "Unattainable", "Beam",   36, C(255, 225, 150) },
@@ -70,6 +75,10 @@ local function register(name: string, model: Instance?)
 	}
 end
 if folder then for _, model in ipairs(folder:GetChildren()) do if model:IsA("Model") then register(model.Name, model) end end end
+-- Fallback if ReplicatedStorage.Animals is empty (e.g. code-only Studio session): register all META defaults
+if next(AnimalData.Animals) == nil then
+	for name in pairs(META) do register(name, nil) end
+end
 -- Ouroboros fallback: until its model is imported, it renders on the dragon mesh
 if not AnimalData.Animals.Ouroboros then
 	register("Ouroboros", nil)
@@ -265,6 +274,28 @@ function AnimalData.Roll(luck: number, boosts: { [string]: number }?, rng: Rando
 	end
 	local mutation = force.Mutation or AnimalData.RollMutation(luck ^ (mutationExponent or 0.5), rng)
 	return { Animal = animal, Tier = tier, Mutation = mutation }
+end
+
+-- Live effective odds helpers for UI disclosure (Paid Random Items policy compliance)
+function AnimalData.EffectiveCreatureOdds(animal: string, boosts: { [string]: number }?): (number, number)
+	local a = AnimalData.Animals[animal]
+	if not a then return 1, 1 end
+	if a.Exclusive then return 1, 1 end
+	local b = boosts or {}
+	local total = 0
+	for name, c in pairs(AnimalData.Animals) do
+		if not c.Exclusive and c.Chance and c.Chance > 0 then
+			total += c.Chance * (b[name] or 1)
+		end
+	end
+	local mult = b[animal] or 1
+	local chance = total > 0 and (a.Chance * mult / total) or a.Chance
+	return chance > 0 and (1 / chance) or a.Odds, mult
+end
+
+function AnimalData.EffectiveTierOdds(tierIndex: number, luck: number): number
+	local t = AnimalData.Tiers[math.clamp(tierIndex, 1, AnimalData.TierCount)]
+	return math.max(1, math.floor(t.Min / math.max(1, luck) + 0.5))
 end
 
 -- Index keys: "Animal" (discovered) and "Animal|Mutation"

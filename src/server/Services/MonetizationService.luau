@@ -1,18 +1,37 @@
--- MonetizationService: gamepasses + developer products (idempotent ProcessReceipt), paid luck multipliers.
+-- MonetizationService: gamepasses + developer products (idempotent ProcessReceipt), paid luck multipliers, PolicyService compliance.
 -- Placeholder ids (0) can be test-granted from the Shop ONLY inside Studio; live servers never allow that.
 local Players = game:GetService("Players")
 local RS = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local MarketplaceService = game:GetService("MarketplaceService")
+local PolicyService = game:GetService("PolicyService")
 local Config = require(RS.Modules.Config)
 local M = Config.Monetization
 
 local Mon = {}
 local S
-local owned = {} -- [player] = { passKey = true }
+local owned = {}      -- [player] = { passKey = true }
+local restricted = {} -- [player] = boolean (PolicyService.ArePaidRandomItemsRestricted)
 
 function Mon.Init(services) S = services end
 local function now() return os.time() end
+
+local function queryPolicyRestricted(player): boolean
+	local ok, info = pcall(function()
+		return PolicyService:GetPolicyInfoForPlayerAsync(player)
+	end)
+	if not ok or type(info) ~= "table" then
+		-- Fail closed on live servers per Paid Random Items policy; allow Studio testing unless manually flagged
+		return not RunService:IsStudio()
+	end
+	return info.ArePaidRandomItemsRestricted == true
+end
+
+function Mon.IsPaidRandomRestricted(player): boolean
+	if player:GetAttribute("PaidRandomRestricted") == true then return true end
+	if restricted[player] ~= nil then return restricted[player] end
+	return false
+end
 
 function Mon.HasPass(player, key)
 	if owned[player] and owned[player][key] then return true end
@@ -68,16 +87,20 @@ end
 function Mon.Start()
 	local function loadPasses(player)
 		owned[player] = {}
+		local isRestr = queryPolicyRestricted(player)
+		restricted[player] = isRestr
+		player:SetAttribute("PaidRandomRestricted", isRestr)
 		for key, pass in pairs(M.Passes) do
 			if pass.Id > 0 then
 				local ok, has = pcall(function() return MarketplaceService:UserOwnsGamePassAsync(player.UserId, pass.Id) end)
 				if ok and has then owned[player][key] = true end
 			end
 		end
+		if S.DataService.Get(player) then S.DataService.Sync(player) end
 	end
 	Players.PlayerAdded:Connect(loadPasses)
 	for _, p in ipairs(Players:GetPlayers()) do task.spawn(loadPasses, p) end
-	Players.PlayerRemoving:Connect(function(p) owned[p] = nil end)
+	Players.PlayerRemoving:Connect(function(p) owned[p] = nil; restricted[p] = nil end)
 	MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, passId, purchased)
 		if not purchased then return end
 		for key, pass in pairs(M.Passes) do if pass.Id == passId and pass.Id > 0 then grantPass(player, key) end end
@@ -102,6 +125,10 @@ function Mon.Start()
 		if typeof(key) ~= "string" then return end
 		local item = (kind == "Pass" and M.Passes[key]) or (kind == "Product" and M.Products[key])
 		if not item then return end
+		if item.RandomModifier and Mon.IsPaidRandomRestricted(player) then
+			S.DataService.Toast(player, "Paid luck modifiers are restricted in your region. Earn free Luck via Streak Luck, Ranks, Totems & Potions!", Color3.fromRGB(255, 200, 120))
+			return
+		end
 		if item.Id > 0 then
 			if kind == "Pass" then MarketplaceService:PromptGamePassPurchase(player, item.Id) else MarketplaceService:PromptProductPurchase(player, item.Id) end
 		elseif RunService:IsStudio() then

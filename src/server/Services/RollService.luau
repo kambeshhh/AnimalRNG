@@ -24,7 +24,9 @@ end
 function Roll.GetLuck(player)
 	local data = S.DataService.Get(player)
 	if not data then return 1, {}, {}, 1, 1 end
-	local add = { Base = 1, Rank = (data.Rank - 1) * 0.05, Totems = 0, AlphaZone = 0, Potion = 0, Weather = 0, Index = 0 }
+	local streakStacks = math.max(data.Stats.StreakStacks or 0, (data.Stats.UnluckyStreak or 0) // 100)
+	local streakBonus = math.min(streakStacks * (Config.Luck.StreakPer100 or 0.02), Config.Luck.StreakCap or 0.5)
+	local add = { Base = 1, Rank = (data.Rank - 1) * 0.05, Streak = streakBonus, Totems = 0, AlphaZone = 0, Potion = 0, Weather = 0, Index = 0 }
 	for _, id in ipairs(data.EquippedTotems) do local t = Config.Totems[id]; if t then add.Totems += t.Luck end end
 	if player:GetAttribute("InAlpha") then add.AlphaZone = Config.Luck.AlphaZone end
 	if (data.LuckyUntil or 0) > os.time() then add.Potion = Config.Potions.Lucky.Luck end
@@ -40,6 +42,11 @@ function Roll.GetLuck(player)
 	return additive * paid * event, add, mult, paid, event
 end
 
+function Roll.CanQuick(player)
+	local data = S.DataService.Get(player)
+	return data and (data.Rank >= Config.Roll.QuickRollRank or S.MonetizationService.HasPass(player, "SwiftRolls")) or false
+end
+
 function Roll.GetCooldown(player, quick, multi)
 	local data = S.DataService.Get(player)
 	local speed = 1
@@ -48,7 +55,7 @@ function Roll.GetCooldown(player, quick, multi)
 		local ts = 0
 		for _, id in ipairs(data.EquippedTotems) do local t = Config.Totems[id]; if t then ts += t.Speed end end
 		speed *= 1 + ts
-		if quick and data.Rank >= Config.Roll.QuickRollRank then speed *= Config.Roll.QuickRollSpeedMult end
+		if quick and Roll.CanQuick(player) then speed *= Config.Roll.QuickRollSpeedMult end
 		speed *= S.MonetizationService.SpeedMult(player)
 	end
 	return Config.Roll.BaseCooldown / speed * (multi and Config.Roll.MultiCooldownMult or 1)
@@ -67,6 +74,16 @@ local function doRoll(player, data, luck, extra, force)
 	local rollLuck = luck * (bonus and Config.Roll.BonusLuckMult or 1) + (extra or 0)
 	local roll = AnimalData.Roll(rollLuck, S.WeatherService.Boosts(), rng, Config.Luck.MutationLuckExponent, force)
 	data.Stats.Rolls += 1
+	-- Free Streak Luck: every 100 rolls without Epic (Tier 5) or better grants permanent +2% luck, capped at +50%
+	if (roll.Tier or 1) >= (Config.Luck.StreakResetTier or 5) then
+		data.Stats.UnluckyStreak = 0
+	else
+		data.Stats.UnluckyStreak = (data.Stats.UnluckyStreak or 0) + 1
+		if data.Stats.UnluckyStreak % 100 == 0 then
+			local maxStacks = math.floor(((Config.Luck.StreakCap or 0.5) / (Config.Luck.StreakPer100 or 0.02)) + 0.5)
+			data.Stats.StreakStacks = math.min(maxStacks, (data.Stats.StreakStacks or 0) + 1)
+		end
+	end
 	local newIndex = S.ProgressionService.AddIndex(data, roll)
 	local status, item, coins = S.DataService.AddRolled(player, roll)
 	local rarity = AnimalData.ItemRarity(item)
@@ -125,7 +142,7 @@ end
 local function onRoll(player, quick, count)
 	local data = S.DataService.Get(player); if not data then return end
 	if typeof(count) ~= "number" then count = 1 end
-	quick = quick == true and data.Rank >= Config.Roll.QuickRollRank
+	quick = quick == true and Roll.CanQuick(player)
 	local multi = count == Config.Roll.MultiCount
 	if multi and not Roll.CanMulti(player) then
 		S.DataService.Toast(player, "5x Roll unlocks at Hunter Rank " .. Config.Roll.MultiRollRank .. " (or the 5x Roll Pass)."); return
@@ -151,6 +168,7 @@ function Roll.Start()
 					p:SetAttribute("RollCooldown", Roll.GetCooldown(p, false))
 					p:SetAttribute("RollCooldownQuick", Roll.GetCooldown(p, true))
 					p:SetAttribute("RollCooldownMulti", Roll.GetCooldown(p, false, true))
+					p:SetAttribute("CanQuick", Roll.CanQuick(p))
 					p:SetAttribute("CanMulti", Roll.CanMulti(p))
 					p:SetAttribute("BonusIn", Config.Roll.BonusEvery - (data.Stats.BonusCounter or 0))
 				end

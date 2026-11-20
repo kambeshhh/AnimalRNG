@@ -1,8 +1,8 @@
 import bpy, os, math, json, sys
 from mathutils import Vector, Matrix
 
-BASE = r"C:\Users\admin\FrostbiteWolf\Imports"
-OUT = r"C:\Users\admin\FrostbiteWolf\GameAssets\New"
+BASE = os.environ.get("MESHY_IMPORTS_DIR", r"C:\Users\admin\FrostbiteWolf\Imports")
+OUT = os.environ.get("BLENDER_OUT_DIR", r"C:\Users\admin\FrostbiteWolf\GameAssets\New")
 os.makedirs(OUT, exist_ok=True)
 
 # name: (rig type, yaw-fix)

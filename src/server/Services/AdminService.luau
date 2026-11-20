@@ -152,8 +152,16 @@ VIP.Shout = function(player, args)
 	return true, "📣 Shout sent"
 end
 
+local lastInvoke = {} -- [player] = os.clock() of last Admin RemoteFunction call
+local ADMIN_RATE_LIMIT = 0.1
+
 ------------------------------------------------------------------ dispatch
 local function handle(player, kind, action, args)
+	local now = os.clock()
+	if lastInvoke[player] and (now - lastInvoke[player]) < ADMIN_RATE_LIMIT then
+		return { Ok = false, Msg = "Too fast — slow down" }
+	end
+	lastInvoke[player] = now
 	args = typeof(args) == "table" and args or {}
 	if typeof(action) ~= "string" then return { Ok = false, Msg = "Bad request" } end
 	if kind == "Dev" then
@@ -167,7 +175,6 @@ local function handle(player, kind, action, args)
 		local fn, cfg = VIP[action], Config.Admin.VIP[action]
 		if not fn or not cfg then return { Ok = false, Msg = "Unknown action" } end
 		cooldowns[player] = cooldowns[player] or {}
-		local now = os.clock()
 		local left = (cooldowns[player][action] or -1e9) + cfg.Cooldown - now
 		if left > 0 then return { Ok = false, Msg = string.format("Cooldown: %ds", math.ceil(left)), Cooldown = left } end
 		if cfg.ServerCooldown and (serverCd[action] or -1e9) + cfg.ServerCooldown > now then return { Ok = false, Msg = "Someone just used that — try in a few seconds" } end
@@ -186,7 +193,7 @@ function Admin.Start()
 	Net.GetFunction("Admin").OnServerInvoke = handle
 	Players.PlayerAdded:Connect(function(p) task.defer(refresh, p) end)
 	for _, p in ipairs(Players:GetPlayers()) do task.defer(refresh, p) end
-	Players.PlayerRemoving:Connect(function(p) cooldowns[p] = nil end)
+	Players.PlayerRemoving:Connect(function(p) cooldowns[p] = nil; lastInvoke[p] = nil end)
 	task.spawn(function() while true do task.wait(10); for _, p in ipairs(Players:GetPlayers()) do refresh(p) end end end)
 end
 

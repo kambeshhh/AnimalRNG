@@ -42,14 +42,14 @@ local function refresh()
 			for _, p in ipairs(Players:GetPlayers()) do
 				local d = S.DataService.Get(p)
 				if d and S.DataService.CanSave(p) then -- sandboxed test sessions never reach the global boards
-					local ok = pcall(function() stores[b.Key]:SetAsync(tostring(p.UserId), b.Log and math.floor(math.log10(math.max(1, d.Stats[b.Stat] or 1)) * 1e9) or math.floor(d.Stats[b.Stat] or 0)) end)
+					local ok = pcall(function() stores[b.Key]:SetAsync(tostring(p.UserId), b.Log and math.floor(math.log10(math.max(1, d.Stats[b.Stat] or 1)) * 1e9 + 0.5) or math.floor(d.Stats[b.Stat] or 0)) end)
 					if not ok then online = false; break end
 				end
 			end
 			if online then
 				local ok, pages = pcall(function() return stores[b.Key]:GetSortedAsync(false, 10) end)
 				if ok then
-					for _, e in ipairs(pages:GetCurrentPage()) do table.insert(entries, { UserId = tonumber(e.key), Value = b.Log and 10 ^ (e.value / 1e9) or e.value }) end
+					for _, e in ipairs(pages:GetCurrentPage()) do table.insert(entries, { UserId = tonumber(e.key), Value = b.Log and math.floor(10 ^ (e.value / 1e9) + 0.5) or e.value }) end
 				else online = false end
 			end
 		end
