@@ -166,9 +166,9 @@ render.Shop = function(p, data)
 		NF.Luck(lb.Total or 1), dieCfg.Icon, dieCfg.Display, tostring(dieCfg.Luck), data.Rebirth or 0, Config.RebirthLuckMult(data.Rebirth or 0))
 	list(p.Body)
 	local bd = row(p.Body, 1, 114)
-	local names = { Base = "Base", Rank = "Rank", Streak = "Streak", Skills = "Skills", Die = "Die", Relics = "Relics", Totems = "Totems", AlphaZone = "Alpha", Potion = "Potion", Weather = "Weather", Index = "Index" }
+	local names = { Base = "Base", Rank = "Rank", Streak = "Streak", Skills = "Skills", Die = "Die", Relics = "Relics", Totems = "Totems", AlphaZone = "Alpha", World2 = "World 2", Potion = "Potion", Weather = "Weather", Index = "Index" }
 	local addParts, multParts = {}, {}
-	for _, k in ipairs({ "Base", "Die", "Relics", "Skills", "Rank", "Streak", "Totems", "AlphaZone", "Potion", "Weather", "Index" }) do
+	for _, k in ipairs({ "Base", "Die", "Relics", "Skills", "Rank", "Streak", "Totems", "AlphaZone", "World2", "Potion", "Weather", "Index" }) do
 		local v = lb.Add and lb.Add[k] or 0
 		if v > 0 then table.insert(addParts, string.format("%s <font color='#78FFAA'>+%s</font>", names[k], NF.Luck(v))) end
 	end

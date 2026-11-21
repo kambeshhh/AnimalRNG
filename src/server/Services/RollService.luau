@@ -34,9 +34,10 @@ function Roll.GetLuck(player)
 		local rCfg = on and Config.Relics and Config.Relics.Types[rKey]
 		if rCfg then relicLuck += (rCfg.Luck or 0) end
 	end
-	local add = { Base = 1, Rank = (data.Rank - 1) * 0.05, Streak = streakBonus, Skills = skillLuck, Die = dieBonus, Relics = relicLuck, Totems = 0, AlphaZone = 0, Potion = 0, Weather = 0, Index = 0 }
+	local add = { Base = 1, Rank = (data.Rank - 1) * 0.05, Streak = streakBonus, Skills = skillLuck, Die = dieBonus, Relics = relicLuck, Totems = 0, AlphaZone = 0, World2 = 0, Potion = 0, Weather = 0, Index = 0 }
 	for _, id in ipairs(data.EquippedTotems) do local t = Config.Totems[id]; if t then add.Totems += t.Luck end end
 	if player:GetAttribute("InAlpha") then add.AlphaZone = Config.Luck.AlphaZone end
+	if player:GetAttribute("InWorld2") then add.World2 = 2.0 end
 	if (data.LuckyUntil or 0) > os.time() then add.Potion = Config.Potions.Lucky.Luck end
 	add.Weather = Config.Luck.Weather[S.WeatherService.Current()] or 0
 	add.Index = S.DataService.IndexCount(data) * Config.Luck.IndexPerEntry

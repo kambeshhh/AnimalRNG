@@ -178,9 +178,11 @@ function Prog.Start()
 		if w2Spawn and player.Character and player.Character.PrimaryPart then
 			local cf = w2Spawn:IsA("BasePart") and w2Spawn.CFrame or w2Spawn:GetPivot()
 			player.Character:PivotTo(cf + Vector3.new(0, 4, 0))
-			S.DataService.Toast(player, "🌌 Welcome to World 2: The Astral Expanse!", Color3.fromRGB(0, 240, 255))
+			player:SetAttribute("InWorld2", true)
+			S.DataService.Toast(player, "🌌 Welcome to World 2: The Astral Expanse (+200% Base Luck)!", Color3.fromRGB(0, 240, 255))
 			S.DataService.Notify(player, "PowerUpFX", { Kind = "Die", Color = Color3.fromRGB(0, 240, 255) })
 		else
+			player:SetAttribute("InWorld2", true)
 			S.DataService.Toast(player, "🌌 World 2 Portal Active! Stepped through into World 2!", Color3.fromRGB(0, 240, 255))
 		end
 	end
