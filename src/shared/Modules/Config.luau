@@ -45,8 +45,9 @@ Config.Monetization = {
 		LuckBoost15 = { Display = "Luck x2 · 15 min", Icon = "🌟", Id = 0, Robux = 49,  LuckMult = 2, Minutes = 15, RandomModifier = true, Desc = "x2 Paid Luck multiplier for 15 min (divides tier odds denominators; live odds update while active)" },
 		LuckBoost60 = { Display = "Luck x2 · 60 min", Icon = "💫", Id = 0, Robux = 149, LuckMult = 2, Minutes = 60, RandomModifier = true, Desc = "x2 Paid Luck multiplier for 60 min (divides tier odds denominators; live odds update while active)" },
 		ServerLuck  = { Display = "SERVER Luck x2 · 10 min", Icon = "🌍", Id = 0, Robux = 199, LuckMult = 2, Minutes = 10, Server = true, RandomModifier = true, Desc = "x2 Paid Luck multiplier for every player in the server for 10 min (live odds update while active)" },
+		InfiniteLuckSurge = { Display = "+1x Luck Surge", Icon = "⚡", Id = 0, Robux = 99, LuckAdd = 1.0, Infinite = true, RandomModifier = true, Desc = "+1x Permanent Luck Surge! Stacks infinitely with every purchase for uncapped luck!" },
 	},
-	ProductOrder = { "LuckBoost15", "LuckBoost60", "ServerLuck" },
+	ProductOrder = { "LuckBoost15", "LuckBoost60", "ServerLuck", "InfiniteLuckSurge" },
 }
 
 Config.Luck = {
@@ -174,15 +175,19 @@ Config.Dice = {
 	},
 }
 
--- Slime RNG: Essence Rebirth (spends Essence, resets Coins only; keeps ALL Animals, Index, Dice, Totems, Skills & Passes)
+-- Slime RNG: Essence Rebirth (resets Coins only; keeps ALL Animals, Index, Dice, Totems, Skills & Passes)
 Config.Rebirth = {
-	BaseEssence = 500,        -- Rebirth 1 costs 500 Essence; doubles each tier (2^n)
-	CostGrowth = 2.0,
-	LuckBase = 1.35,          -- compounding x1.35 Luck per Rebirth
-	CoinBase = 1.50,          -- compounding x1.50 Coin Income per Rebirth
+	BaseCoins   = 500000,     -- Rebirth 1 costs 500K Coins
+	BaseEssence = 250,        -- Rebirth 1 costs 250 Essence
+	CostGrowth  = 1.75,       -- Smooth 1.75x scaling (each tier is progressively harder, but not too grindy)
+	LuckBase    = 1.30,       -- compounding x1.30 (+30%) Luck per Rebirth
+	CoinBase    = 1.45,       -- compounding x1.45 (+45%) Coin Income per Rebirth
+	World2RebirthRequired = 10, -- 🌌 Rebirth 10 unlocks the World 2 Cosmic Portal!
 }
-function Config.RebirthCost(level: number): number
-	return math.floor(Config.Rebirth.BaseEssence * (Config.Rebirth.CostGrowth ^ level) + 0.5)
+function Config.RebirthCost(level: number): (number, number)
+	local coins = math.floor(Config.Rebirth.BaseCoins * (Config.Rebirth.CostGrowth ^ level) + 0.5)
+	local essence = math.floor(Config.Rebirth.BaseEssence * (Config.Rebirth.CostGrowth ^ level) + 0.5)
+	return coins, essence
 end
 function Config.RebirthLuckMult(level: number): number
 	if level <= 0 then return 1 end

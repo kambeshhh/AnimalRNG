@@ -251,7 +251,11 @@ render.Shop = function(p, data)
 	for _, key in ipairs(M.ProductOrder) do
 		local def = M.Products[key]
 		local left = def.Server and ((RS:GetAttribute("ServerLuckUntil") or 0) - workspace:GetServerTimeNow()) or ((data.LuckBoostUntil or 0) - (data.ServerOsTime or os.time()))
-		item("Product", key, def, false, left > 0 and string.format("  ·  <font color='#78FFAA'>active %d:%02d</font>", left // 60, math.floor(left % 60)) or "")
+		local extra = left > 0 and string.format("  ·  <font color='#78FFAA'>active %d:%02d</font>", left // 60, math.floor(left % 60)) or ""
+		if def.Infinite then
+			extra = string.format("  ·  <font color='#28D2FF'>Purchased: +%.1fx (Stacks Infinitely!)</font>", data.InfinitePaidLuck or 0)
+		end
+		item("Product", key, def, false, extra)
 	end
 	footer(p, {})
 end
@@ -524,7 +528,7 @@ end
 render.Rank = function(p, data)
 	local cur = Config.Ranks[data.Rank]
 	local reb = data.Rebirth or 0
-	local rebCost = Config.RebirthCost(reb)
+	local coinCost, essenceCost = Config.RebirthCost(reb)
 	local curLuckM = Config.RebirthLuckMult(reb)
 	local nextLuckM = Config.RebirthLuckMult(reb + 1)
 	local curCoinM = Config.RebirthCoinMult(reb)
@@ -532,6 +536,24 @@ render.Rank = function(p, data)
 	p.Subtitle.Text = string.format("🔱 Rebirth %d (×%.2f Luck · ×%.2f Coins)   ·   Hunter Rank %d / %d (%s)",
 		reb, curLuckM, curCoinM, data.Rank, #Config.Ranks, cur.Name)
 	list(p.Body)
+
+	-- 0) WORLD 2 COSMIC PORTAL STATUS (UNLOCKED AT REBIRTH 10)
+	local w2Req = Config.Rebirth.World2RebirthRequired or 10
+	local w2Unlocked = reb >= w2Req
+	local w2Card = Instance.new("Frame"); w2Card.Size = UDim2.new(1, -6, 0, 76); w2Card.LayoutOrder = 0
+	UI.Glass(w2Card, 16, w2Unlocked and C(0, 240, 255) or C(90, 80, 140), C(18, 14, 42))
+	w2Card.Parent = p.Body
+	UI.Label(w2Card, w2Unlocked and "🌌 WORLD 2 COSMIC PORTAL: ACTIVE ✓" or string.format("🌌 WORLD 2 PORTAL: LOCKED (Rebirth %d / %d Required)", reb, w2Req),
+		UDim2.new(1, -195, 0, 24), UDim2.fromOffset(14, 10), 17, w2Unlocked and C(0, 240, 255) or Config.UI.Gold, UI.Display, { TextXAlignment = Enum.TextXAlignment.Left })
+	UI.Label(w2Card, w2Unlocked and "Step through the dimensional rift into the Astral Expanse (+200% Base Luck)!" or "Reach Rebirth 10 to break the dimensional seal and unlock World 2!",
+		UDim2.new(1, -195, 0, 20), UDim2.fromOffset(14, 38), 12, Config.UI.Muted, Enum.Font.GothamMedium, { TextXAlignment = Enum.TextXAlignment.Left })
+	if w2Unlocked then
+		UI.Button(w2Card, "🌌 ENTER WORLD 2", UDim2.fromOffset(175, 46), C(0, 200, 255), function()
+			act("TeleportWorld2")
+		end, { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -14, 0.5, 0) })
+	else
+		UI.Button(w2Card, string.format("🔒 LOCKED (R%d)", w2Req), UDim2.fromOffset(175, 46), C(50, 54, 78), nil, { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -14, 0.5, 0) })
+	end
 
 	-- 1) SLIME RNG ESSENCE REBIRTH PORTAL CARD
 	local rbCard = Instance.new("Frame"); rbCard.Size = UDim2.new(1, -6, 0, 108); rbCard.LayoutOrder = 1
@@ -541,11 +563,14 @@ render.Rank = function(p, data)
 	UI.Label(rbCard, string.format("🔱 ESSENCE REBIRTH %d  ➔  REBIRTH %d", reb, reb + 1), UDim2.new(1, -210, 0, 26), UDim2.fromOffset(14, 8), 19, Config.UI.Gold, UI.Display, { TextXAlignment = Enum.TextXAlignment.Left })
 	UI.Label(rbCard, string.format("Permanent Multipliers:  <font color='#78FFAA'>Luck ×%.2f ➔ ×%.2f</font>   ·   <font color='#FFD166'>Coins ×%.2f ➔ ×%.2f</font>", curLuckM, nextLuckM, curCoinM, nextCoinM),
 		UDim2.new(1, -210, 0, 22), UDim2.fromOffset(14, 36), 14, Config.UI.Text, Enum.Font.GothamBold, { TextXAlignment = Enum.TextXAlignment.Left })
-	UI.Label(rbCard, string.format("✓ Keeps ALL Animals, Index, 3D Dice, Totems & Skills (Resets Coins only)   ·   Cost: <font color='#%s'>✨ %s / %s Essence</font>",
-		(data.Essence or 0) >= rebCost and "78FFAA" or "FF7090", comma(data.Essence or 0), comma(rebCost)),
+	local hasCoins = (data.Coins or 0) >= coinCost
+	local hasEssence = (data.Essence or 0) >= essenceCost
+	UI.Label(rbCard, string.format("✓ Keeps ALL Animals, Index, 3D Dice & Skills (Resets Coins)   ·   Cost: <font color='#%s'>💰%s</font>  +  <font color='#%s'>✨%s Essence</font>",
+		hasCoins and "78FFAA" or "FF7090", NF.Short(coinCost),
+		hasEssence and "78FFAA" or "FF7090", NF.Short(essenceCost)),
 		UDim2.new(1, -210, 0, 20), UDim2.fromOffset(14, 62), 12, Config.UI.Muted, Enum.Font.GothamBold, { TextXAlignment = Enum.TextXAlignment.Left })
-	local canReb = (data.Essence or 0) >= rebCost
-	UI.Button(rbCard, "🔱 REBIRTH (" .. NF.Short(rebCost) .. "✨)", UDim2.fromOffset(180, 56), canReb and C(170, 80, 245) or C(50, 54, 82), function()
+	local canReb = hasCoins and hasEssence
+	UI.Button(rbCard, "🔱 REBIRTH (" .. NF.Short(coinCost) .. "💰)", UDim2.fromOffset(180, 56), canReb and C(170, 80, 245) or C(50, 54, 82), function()
 		act("Rebirth")
 	end, { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -14, 0.5, 0) })
 

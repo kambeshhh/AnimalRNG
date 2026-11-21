@@ -539,13 +539,18 @@ local function unattainable(r, J)
 		title.Text = "UNATTAINABLE"; title.TextColor3 = WHITE; title.Rainbow.Enabled = true; title.Position = basePos; title.TextTransparency = 1; sub.TextTransparency = 1
 	end)
 	un.Visible = true; un.BackgroundTransparency = 1; title.TextTransparency = 1; sub.TextTransparency = 1; un.Flash.BackgroundTransparency = 1
-	-- A) blackout + heartbeat
+	-- A) blackout + dramatic double heartbeat
 	vignette(J, 1, 1.2); blur(J, 10, 1.4); zoom(J, 18, 3.4)
 	grade(J, { Contrast = 0.5, Saturation = -0.6, Brightness = -0.1 }, WHITE, 1.4)
-	tw(un, { BackgroundTransparency = 0.3 }, 1.2)
+	tw(un, { BackgroundTransparency = 0.05 }, 1.0)
 	rift(J, WHITE, 1.6, true); stars(J, 16, WHITE, true); tag(J, r, WHITE)
-	for i = 1, 3 do sfx(J, "Low", 0.65, 0.55 + i * 0.1); shake(J, 0.2 * i, 0.35); J:wait(0.42) end
-	sfx(J, "Rise", 0.7, 0.8)
+	for i = 1, 2 do
+		sfx(J, "Bass", 0.8, 0.4)
+		sfx(J, "Low", 0.85, 0.42 + i * 0.08)
+		shake(J, 0.55 * i, 0.45)
+		J:wait(0.68)
+	end
+	sfx(J, "Rise", 0.8, 0.75)
 	J:wait(0.25)
 	-- B) FAKE-OUT: appears to resolve as Primordial
 	local fake = AnimalData.Tiers[TOP - 1]

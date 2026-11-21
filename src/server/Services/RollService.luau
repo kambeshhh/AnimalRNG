@@ -42,8 +42,9 @@ function Roll.GetLuck(player)
 	local paid = 1
 	for _, v in pairs(mult) do paid *= v end
 	paid = math.min(paid, Config.Monetization.PaidLuckCap)
+	local infinitePaid = data.InfinitePaidLuck or 0
 	local event = Roll.EventMult()
-	return additive * rebirthMult * paid * event, add, mult, paid, event, rebirthMult
+	return (additive + infinitePaid) * rebirthMult * paid * event, add, mult, paid, event, rebirthMult, infinitePaid
 end
 
 function Roll.CanQuick(player)

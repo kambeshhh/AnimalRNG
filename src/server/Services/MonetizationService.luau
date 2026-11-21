@@ -61,7 +61,10 @@ end
 local function grantProduct(player, key)
 	local prod = M.Products[key]; local data = S.DataService.Get(player)
 	if not prod or not data then return false end
-	if prod.Server then
+	if prod.Infinite and prod.LuckAdd then
+		data.InfinitePaidLuck = (data.InfinitePaidLuck or 0) + prod.LuckAdd
+		S.DataService.Notify(player, "Banner", { Text = prod.Icon .. " +1x INFINITE LUCK SURGE GRANTED! Total: " .. string.format("+%.1fx", data.InfinitePaidLuck), Color = Color3.fromRGB(34, 227, 255) })
+	elseif prod.Server then
 		local untilT = math.max(workspace:GetServerTimeNow(), RS:GetAttribute("ServerLuckUntil") or 0) + prod.Minutes * 60
 		RS:SetAttribute("ServerLuckUntil", untilT)
 		RS:SetAttribute("ServerLuckBy", player.DisplayName)

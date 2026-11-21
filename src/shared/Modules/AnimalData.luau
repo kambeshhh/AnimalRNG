@@ -266,11 +266,18 @@ end
 function AnimalData.Roll(luck: number, boosts: { [string]: number }?, rng: Random, mutationExponent: number?, force: any?)
 	force = force or {}
 	local tier = force.Tier or AnimalData.RollTier(luck, rng)
-	local animal
-	if tier >= AnimalData.TierCount then animal = AnimalData.UnattainableCreature
-	else
-		animal = force.Animal or AnimalData.PickCreature(rng, boosts)
-		if animal == AnimalData.UnattainableCreature then animal = AnimalData.PickCreature(rng, boosts) end -- strict exclusivity
+	local animal = force.Animal
+	if not animal then
+		if tier >= AnimalData.TierCount then
+			-- At Tier 28 (Unattainable), Ouroboros has a flagship chance (35%), and all other animals can drop too!
+			if rng:NextNumber() < 0.35 then
+				animal = AnimalData.UnattainableCreature
+			else
+				animal = AnimalData.PickCreature(rng, boosts)
+			end
+		else
+			animal = AnimalData.PickCreature(rng, boosts)
+		end
 	end
 	local mutation = force.Mutation or AnimalData.RollMutation(luck ^ (mutationExponent or 0.5), rng)
 	return { Animal = animal, Tier = tier, Mutation = mutation }
@@ -298,9 +305,10 @@ function AnimalData.EffectiveTierOdds(tierIndex: number, luck: number): number
 	return math.max(1, math.floor(t.Min / math.max(1, luck) + 0.5))
 end
 
--- Index keys: "Animal" (discovered) and "Animal|Mutation"
+-- Index keys: "Animal", "Animal|T<Tier>", and "Animal|Mutation" (Rich 896-slot Zoology Index)
 function AnimalData.IndexKeys(item): { string }
 	local keys = { item.Animal }
+	if item.Tier then table.insert(keys, item.Animal .. "|T" .. tostring(item.Tier)) end
 	if item.Mutation and item.Mutation ~= "Normal" then table.insert(keys, item.Animal .. "|" .. item.Mutation) end
 	return keys
 end

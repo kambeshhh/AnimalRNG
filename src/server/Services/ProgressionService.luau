@@ -95,20 +95,35 @@ function Prog.Start()
 		S.DataService.Sync(player)
 	end
 
-	-- Slime RNG: Essence Rebirth (spends Essence & resets Coins only; keeps ALL Animals, Index, Dice, Totems, Skills & Passes)
+	-- Slime RNG: Essence Rebirth (spends Coins & Essence, resets Coins only; keeps ALL Animals, Index, Dice, Totems, Skills & Passes)
 	A.Rebirth = function(player)
 		local data = S.DataService.Get(player); if not data then return end
 		local cur = data.Rebirth or 0
-		local cost = Config.RebirthCost(cur)
-		if (data.Essence or 0) < cost then
-			S.DataService.Toast(player, "Need " .. AnimalData.Comma(cost) .. " ✨ Essence to Rebirth (Sacrifice duplicates at the Altar!)."); return
+		local coinCost, essenceCost = Config.RebirthCost(cur)
+		if (data.Coins or 0) < coinCost then
+			S.DataService.Toast(player, "Need " .. AnimalData.Comma(coinCost) .. " Coins to Rebirth!"); return
 		end
-		data.Essence -= cost
+		if (data.Essence or 0) < essenceCost then
+			S.DataService.Toast(player, "Need " .. AnimalData.Comma(essenceCost) .. " ✨ Essence to Rebirth (Sacrifice duplicates at the Altar!)."); return
+		end
 		data.Coins = 0
+		data.Essence -= essenceCost
 		data.Rebirth = cur + 1
 		data.Stats.Rebirths = data.Rebirth
 		local luckM = Config.RebirthLuckMult(data.Rebirth)
 		local coinM = Config.RebirthCoinMult(data.Rebirth)
+
+		-- World 2 Unlock Check on Rebirth 10!
+		if data.Rebirth == Config.Rebirth.World2RebirthRequired then
+			data.World2Unlocked = true
+			for _, p in ipairs(game:GetService("Players"):GetPlayers()) do
+				S.DataService.Notify(p, "Banner", {
+					Text = string.format("🌌 %s HAS UNLOCKED THE WORLD 2 COSMIC PORTAL (REBIRTH 10)! 🌌", player.DisplayName:upper()),
+					Color = Color3.fromRGB(0, 240, 255),
+				})
+			end
+		end
+
 		for _, p in ipairs(game:GetService("Players"):GetPlayers()) do
 			S.DataService.Notify(p, "Banner", {
 				Text = string.format("🔱 %s REACHED REBIRTH %d! (Permanent x%.2f Luck & x%.2f Coins)", player.DisplayName:upper(), data.Rebirth, luckM, coinM),
@@ -118,6 +133,23 @@ function Prog.Start()
 		S.DataService.Notify(player, "PowerUpFX", { Kind = "Rebirth", Level = data.Rebirth, Color = Color3.fromRGB(210, 140, 255) })
 		if S.MorphService and S.MorphService.RefreshTitle then S.MorphService.RefreshTitle(player) end
 		S.DataService.Sync(player)
+	end
+
+	A.TeleportWorld2 = function(player)
+		local data = S.DataService.Get(player); if not data then return end
+		if (data.Rebirth or 0) < Config.Rebirth.World2RebirthRequired then
+			S.DataService.Toast(player, string.format("🔒 World 2 Portal requires Rebirth %d! (You have Rebirth %d)", Config.Rebirth.World2RebirthRequired, data.Rebirth or 0))
+			return
+		end
+		local w2Spawn = workspace:FindFirstChild("World2Spawn", true) or workspace:FindFirstChild("World2", true)
+		if w2Spawn and player.Character and player.Character.PrimaryPart then
+			local cf = w2Spawn:IsA("BasePart") and w2Spawn.CFrame or w2Spawn:GetPivot()
+			player.Character:PivotTo(cf + Vector3.new(0, 4, 0))
+			S.DataService.Toast(player, "🌌 Welcome to World 2: The Astral Expanse!", Color3.fromRGB(0, 240, 255))
+			S.DataService.Notify(player, "PowerUpFX", { Kind = "Die", Color = Color3.fromRGB(0, 240, 255) })
+		else
+			S.DataService.Toast(player, "🌌 World 2 Portal Active! Stepped through into World 2!", Color3.fromRGB(0, 240, 255))
+		end
 	end
 
 	-- Slime RNG: Branching Coin Skill Tree

@@ -28,34 +28,21 @@ local function assertTest(name: string, condition: boolean, detail: string?)
 	end
 end
 
--- Test 1: Ladder Rarity Integrity (Tier 1 to Tier 28)
-local ladderCount = #Config.RarityLadder
-assertTest("28-Tier Rarity Ladder", ladderCount == 28, "Expected 28 tiers, got " .. tostring(ladderCount))
+-- Test 1: 28-Tier Ladder Integrity
+local tierCount = AnimalData.TierCount or #AnimalData.Tiers
+assertTest("28-Tier Rarity Ladder", tierCount == 28, "Expected 28 tiers, got " .. tostring(tierCount))
 
 -- Test 2: Tier 28 Unattainable Odds
-local tier28 = Config.RarityLadder[28]
-assertTest("Tier 28 is Unattainable at 1 in 1Qa", tier28 and tier28.Tier == 28 and tier28.Odds == 1e15, "Tier 28 odds mismatch")
+local tier28 = AnimalData.Tiers[28]
+assertTest("Tier 28 is Unattainable at 1 in 1Qa", tier28 and tier28.Min == 1e15, "Tier 28 odds mismatch")
 
--- Test 3: Ouroboros Exclusivity (Must ONLY be in Tier 28)
-local ouroborosInLowerTiers = false
-for i = 1, 27 do
-	local tier = Config.RarityLadder[i]
-	if tier and tier.Pool then
-		for _, creature in ipairs(tier.Pool) do
-			if creature == "Ouroboros" then
-				ouroborosInLowerTiers = true
-				break
-			end
-		end
-	end
-end
-assertTest("Ouroboros Excluded from Tiers 1-27", not ouroborosInLowerTiers, "Ouroboros was found in lower tiers!")
+-- Test 3: Rich Index: All Animals in All Tiers Rollable
+local rollRng = Random.new()
+local forcedT28Roll = AnimalData.Roll(1e18, {}, rollRng, 0.5, { Tier = 28 })
+assertTest("Any Animal Rollable at Tier 28", forcedT28Roll ~= nil and forcedT28Roll.Tier == 28 and forcedT28Roll.Animal ~= nil, "Roll failed")
 
 -- Test 4: 8 Mutations Defined
-local mutationCount = 0
-for _ in pairs(Config.Mutations) do
-	mutationCount += 1
-end
+local mutationCount = #AnimalData.MutationOrder
 assertTest("8 Mutation Types", mutationCount == 8, "Expected 8 mutations, got " .. tostring(mutationCount))
 
 -- Test 5: NumberFormat.Odds and NumberFormat.Comma
@@ -65,16 +52,23 @@ assertTest("NumberFormat 1Qa Compact", formatted1Qa:find("1 in 1Qa") ~= nil, "Go
 assertTest("NumberFormat 1Sx Singularity", formatted1Sx:find("1 in 1Sx") ~= nil, "Got: " .. formatted1Sx)
 
 -- Test 6: 8-Tier 3D Dice Ladder
-local diceCount = #Config.Dice
+local diceCount = #Config.Dice.Order
 assertTest("8-Tier 3D Dice Config", diceCount == 8, "Expected 8 dice, got " .. tostring(diceCount))
 
--- Test 7: Rebirth Config
-assertTest("Rebirth Luck & Coin Multipliers", Config.Rebirth.LuckBase == 1.35 and Config.Rebirth.CoinBase == 1.50, "Rebirth math mismatch")
+-- Test 7: Rebirth Smooth Curve & World 2 Milestone
+local coins1, ess1 = Config.RebirthCost(0)
+local coins10, ess10 = Config.RebirthCost(9)
+assertTest("Rebirth Smooth Curve Scaling", coins1 == 500000 and coins10 > 70000000 and Config.Rebirth.CostGrowth == 1.75, "Rebirth math mismatch")
+assertTest("World 2 Unlocks at Rebirth 10", Config.Rebirth.World2RebirthRequired == 10, "World 2 requirement mismatch")
 
--- Test 8: Active Companion Pack
-assertTest("Pack Limits (3 Companions)", Config.Pack.MaxActive == 3 and Config.Pack.TickInterval == 2, "Pack settings mismatch")
+-- Test 8: Infinite P2W Luck Developer Product
+local infProduct = Config.Monetization.Products.InfiniteLuckSurge
+assertTest("Infinite P2W Luck Product Defined", infProduct ~= nil and infProduct.Infinite == true and infProduct.LuckAdd == 1.0, "Infinite luck product missing")
 
--- Test 9: Promo Codes Config
+-- Test 9: Active Companion Pack
+assertTest("Pack Limits (3 Companions)", Config.Pack.MaxCompanions == 3 and Config.Pack.TickInterval == 2, "Pack settings mismatch")
+
+-- Test 10: Promo Codes Active
 local ouroCode = Config.Codes["OUROBOROS"]
 local slimeCode = Config.Codes["SLIMEDICE"]
 assertTest("Promo Codes Active", ouroCode ~= nil and slimeCode ~= nil, "Codes missing")
