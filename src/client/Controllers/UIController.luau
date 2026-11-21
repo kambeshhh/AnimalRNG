@@ -39,8 +39,10 @@ end
 local function footer(panel, buttons)
 	local f = panel.Footer
 	UI.Clear(f)
+	local maxW = #buttons >= 5 and 126 or (#buttons == 4 and 155 or 180)
 	for i, b in ipairs(buttons) do
-		local btn = UI.Button(f, b[1], UDim2.fromOffset(b.W or 150, 46), b[2], b[3], { LayoutOrder = i })
+		local w = math.min(b.W or 150, maxW)
+		local btn = UI.Button(f, b[1], UDim2.fromOffset(w, 46), b[2], b[3], { LayoutOrder = i })
 		if b.Disabled then btn.BackgroundColor3 = C(40, 46, 64); btn.TextColor3 = Config.UI.Muted end
 	end
 end

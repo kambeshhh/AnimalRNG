@@ -596,9 +596,11 @@ local function unattainable(r, J)
 	impactFrame(J, WHITE)
 	un.Flash.BackgroundTransparency = 0; tw(un.Flash, { BackgroundTransparency = 1 }, 1.4)
 	title.Text = "UNATTAINABLE"; title.TextColor3 = WHITE; title.Rainbow.Enabled = true; title.TextTransparency = 0
+	do local ts = title:FindFirstChildOfClass("UIStroke"); if ts then ts.Transparency = 0 end end
 	for _, n in { "GrailLineTop", "GrailLineBottom" } do local ln = un:FindFirstChild(n); if ln then ln.Visible = true; ln.BackgroundTransparency = 1; tw(ln, { BackgroundTransparency = 0 }, 0.6) end end
 	title.Rainbow.Offset = Vector2.new(-1, 0); tw(title.Rainbow, { Offset = Vector2.new(1, 0) }, 4, Enum.EasingStyle.Linear)
 	sub.Text = r.Name .. "  •  " .. AnimalData.FormatRarity(r.Rarity); tw(sub, { TextTransparency = 0 }, 0.6)
+	do local ss = sub:FindFirstChildOfClass("UIStroke"); if ss then tw(ss, { Transparency = 0 }, 0.6) end end
 	sfx(J, "Bass", 0.85, 0.42); sfx(J, "Reveal", 0.65, 0.75); sfx(J, "Low", 0.6, 0.5); sfx(J, "Hello", 0.6, 0.95)
 	task.delay(0.14, function() if not J.dead then sfx(J, "Bass", 0.65, 0.68); sfx(J, "Chime", 0.65, 1.25) end end)
 	task.delay(0.32, function() if not J.dead then sfx(J, "Chime", 0.6, 1.5) end end)
@@ -624,6 +626,8 @@ local function unattainable(r, J)
 	tw(un, { BackgroundTransparency = 0.8 }, 0.8)
 	J:wait(1.3)
 	outro(J, 0.7); tw(title, { TextTransparency = 1 }, 0.7); tw(sub, { TextTransparency = 1 }, 0.7)
+	do local ts = title:FindFirstChildOfClass("UIStroke"); if ts then tw(ts, { Transparency = 1 }, 0.7) end end
+	do local ss = sub:FindFirstChildOfClass("UIStroke"); if ss then tw(ss, { Transparency = 1 }, 0.7) end end
 	J:wait(0.7)
 end
 

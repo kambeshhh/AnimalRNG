@@ -42,8 +42,12 @@ local OLD_TEXT = { { C(235, 240, 255), K.Text }, { C(244, 246, 251), K.Text }, {
 local function textStroke(d)
 	local s = d:FindFirstChildOfClass("UIStroke")
 	if s and s.ApplyStrokeMode == Enum.ApplyStrokeMode.Border then return end
+	if d.TextTransparency >= 0.95 then
+		if s and s.ApplyStrokeMode == Enum.ApplyStrokeMode.Contextual then s.Transparency = 1 end
+		return
+	end
 	if not s then s = Instance.new("UIStroke"); s.Name = "TextStroke"; s.Parent = d end
-	s.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual; s.Color = K.Outline; s.Transparency = 0
+	s.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual; s.Color = K.Outline; s.Transparency = d.TextTransparency
 	s.Thickness = (d.TextSize >= 22 and 2.5) or (d.TextSize >= 15 and 2) or 1.5
 	-- dark text (e.g. on bright pills) reads better without an outline
 	local c = d.TextColor3
@@ -55,6 +59,22 @@ function T.Apply(d)
 	if d:IsA("GuiObject") and d.BackgroundTransparency < 1 then
 		local c = d.BackgroundColor3
 		for _, pair in T.BgRemap do if close(c, pair[1]) then d.BackgroundColor3 = pair[2]; break end end
+	end
+	if d.Name == "Wallet" and d:IsA("Frame") then
+		d.Size = UDim2.fromOffset(310, 84)
+		local coins = d:FindFirstChild("Coins")
+		if coins and coins:IsA("TextLabel") then coins.TextScaled = true end
+		local mats = d:FindFirstChild("Materials")
+		if mats then
+			for _, m in ipairs(mats:GetChildren()) do
+				if m:IsA("TextLabel") then
+					m.AutomaticSize = Enum.AutomaticSize.X
+					if not m:FindFirstChildOfClass("UIPadding") then
+						local pad = Instance.new("UIPadding"); pad.PaddingLeft = UDim.new(0, 6); pad.PaddingRight = UDim.new(0, 6); pad.Parent = m
+					end
+				end
+			end
+		end
 	end
 	if d:IsA("TextLabel") or d:IsA("TextButton") then
 		d.FontFace = FRED
@@ -69,9 +89,13 @@ function T.Apply(d)
 		end
 	elseif d:IsA("UIStroke") then
 		if d.ApplyStrokeMode == Enum.ApplyStrokeMode.Contextual then
-			d.Color = K.Outline; d.Transparency = 0; d.Thickness = math.max(d.Thickness, 1.5)
 			local p = d.Parent
-			if p and (p:IsA("TextLabel") or p:IsA("TextButton")) then local c = p.TextColor3; if (0.299 * c.R + 0.587 * c.G + 0.114 * c.B) < 0.3 then d.Transparency = 1 end end
+			if p and (p:IsA("TextLabel") or p:IsA("TextButton")) and p.TextTransparency >= 0.95 then
+				d.Transparency = 1
+			else
+				d.Color = K.Outline; d.Transparency = 0; d.Thickness = math.max(d.Thickness, 1.5)
+				if p and (p:IsA("TextLabel") or p:IsA("TextButton")) then local c = p.TextColor3; if (0.299 * c.R + 0.587 * c.G + 0.114 * c.B) < 0.3 then d.Transparency = 1 end end
+			end
 		elseif (d.Name == "Stroke" or d.Name == "Inner") and (close(d.Color, C(42, 50, 71)) or close(d.Color, Color3.new(1, 1, 1))) and not d:FindFirstChildWhichIsA("UIGradient") then
 			d.Color = K.Outline; d.Thickness = 3; d.Transparency = 0
 		end
