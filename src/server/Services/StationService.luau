@@ -18,14 +18,43 @@ end
 
 local function buildWorld2AndPortals()
 	if workspace:FindFirstChild("World2") then return end
+	local SS = game:GetService("ServerStorage")
+	local assetLib = SS:FindFirstChild("AssetLibrary")
+
+	local function spawnProp(parent, libName, cf, scale, neonCol)
+		local tpl = assetLib and assetLib:FindFirstChild(libName)
+		if not tpl then return nil end
+		local clone = tpl:Clone()
+		for _, d in ipairs(clone:GetDescendants()) do
+			if d:IsA("BasePart") then
+				d.Anchored = true
+				if neonCol then
+					d.Material = Enum.Material.Neon
+					d.Color = neonCol
+					if d:IsA("MeshPart") then d.TextureID = "" end
+				end
+			end
+		end
+		if scale and scale ~= 1 then pcall(function() clone:ScaleTo(clone:GetScale() * scale) end) end
+		clone:PivotTo(cf)
+		clone.Parent = parent
+		return clone
+	end
 
 	-- 1) WORLD 1 COSMIC PORTAL GATEWAY (North-East Sanctuary Plaza)
 	local portalModel = Instance.new("Model"); portalModel.Name = "World2PortalGateway"
 	local pPos = Vector3.new(82, 12, -82)
 	local base = Instance.new("Part"); base.Name = "Pedestal"; base.Shape = Enum.PartType.Cylinder
 	base.Anchored = true; base.Material = Enum.Material.SmoothPlastic; base.Color = C(24, 28, 52)
-	base.Size = Vector3.new(2, 22, 22); base.CFrame = CFrame.new(pPos - Vector3.new(0, 9.5, 0)) * CFrame.Angles(0, 0, math.rad(90))
+	base.Size = Vector3.new(2, 24, 24); base.CFrame = CFrame.new(pPos - Vector3.new(0, 9.5, 0)) * CFrame.Angles(0, 0, math.rad(90))
 	base.Parent = portalModel
+
+	-- Flanking 3D Greek Pillars & Glowing Crystal Clusters around the Portal Gateway
+	spawnProp(portalModel, "Pillar", CFrame.new(pPos + Vector3.new(-9, -2, -5)), 0.85)
+	spawnProp(portalModel, "Pillar", CFrame.new(pPos + Vector3.new(9, -2, 5)), 0.85)
+	spawnProp(portalModel, "CrystalBlue", CFrame.new(pPos + Vector3.new(-10.5, -6.5, -2)), 2.2, C(34, 235, 255))
+	spawnProp(portalModel, "CrystalBlue", CFrame.new(pPos + Vector3.new(10.5, -6.5, 2)), 2.2, C(210, 100, 255))
+	spawnProp(portalModel, "Quartz", CFrame.new(pPos + Vector3.new(0, 11.5, 0)), 1.6, C(255, 210, 60))
 
 	local ring = Instance.new("Part"); ring.Name = "OuroborosRing"; ring.Shape = Enum.PartType.Cylinder
 	ring.Anchored = true; ring.CanCollide = false; ring.Material = Enum.Material.Neon; ring.Color = C(255, 205, 60)
@@ -69,7 +98,7 @@ local function buildWorld2AndPortals()
 	end)
 	portalModel.Parent = workspace.Hub
 
-	-- 2) WORLD 2: THE ASTRAL EXPANSE (Floating Cosmic Island in the Sky)
+	-- 2) WORLD 2: THE ASTRAL EXPANSE (Floating Cosmic Island in the Sky with 3D Temple Pillars, Crystals & Trees)
 	local w2 = Instance.new("Model"); w2.Name = "World2"
 	local w2Center = Vector3.new(0, 520, -680)
 
@@ -95,18 +124,19 @@ local function buildWorld2AndPortals()
 	w2Spawn.Size = Vector3.new(8, 1, 8); w2Spawn.CFrame = CFrame.new(w2Center + Vector3.new(0, 5, 45))
 	w2Spawn.Parent = w2
 
-	-- 8 Floating Cosmic Monoliths around World 2 Island
+	-- 8 Real 3D Greek Pillars, Crystal Clusters & Floating Quartz around World 2 Island
 	for i = 1, 8 do
 		local ang = (i - 1) / 8 * math.pi * 2
 		local rad = 74
-		local mPos = w2Center + Vector3.new(math.cos(ang) * rad, 16, math.sin(ang) * rad)
-		local pil = Instance.new("Part"); pil.Name = "AstralMonolith_" .. i
-		pil.Anchored = true; pil.Material = Enum.Material.Neon
-		pil.Color = (i % 2 == 0) and C(210, 100, 255) or C(34, 235, 255)
-		pil.Size = Vector3.new(4.5, 28, 4.5); pil.Position = mPos
-		pil:SetAttribute("BasePos", mPos)
-		CS:AddTag(pil, "Floater")
-		pil.Parent = w2
+		local mPos = w2Center + Vector3.new(math.cos(ang) * rad, 13, math.sin(ang) * rad)
+		spawnProp(w2, "Pillar", CFrame.new(mPos), 1.05)
+		spawnProp(w2, "CrystalBlue", CFrame.new(mPos + Vector3.new(0, -7, 0)) * CFrame.Angles(0, ang, 0), 2.5, (i % 2 == 0) and C(210, 100, 255) or C(34, 235, 255))
+		local qPos = mPos + Vector3.new(0, 16, 0)
+		local q = spawnProp(w2, "Quartz", CFrame.new(qPos), 1.8, (i % 2 == 0) and C(34, 235, 255) or C(255, 205, 60))
+		if q and q.PrimaryPart then
+			q.PrimaryPart:SetAttribute("BasePos", qPos)
+			CS:AddTag(q.PrimaryPart, "Floater")
+		end
 	end
 
 	-- Return Portal back to World 1

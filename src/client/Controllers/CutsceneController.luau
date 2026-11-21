@@ -438,7 +438,7 @@ local function oddsLine(r)
 		r.NewIndex and "  •  <font color='#78FFAA'>NEW!</font>" or "")
 end
 
--- Tiers 1–3 (and anything below the player's cutscene threshold): instant card, no takeover
+-- Tiers 1–3 (and anything below the player's cutscene threshold): instant card with 3D model preview
 local function quickCard(r)
 	local box = UI.Gui.RollReveal
 	local col = tierColor(r.TierIndex)
@@ -447,6 +447,23 @@ local function quickCard(r)
 	box.AnimalName.Text = r.Name; box.AnimalName.TextColor3 = col
 	if box:FindFirstChild("AccentBar") then box.AccentBar.BackgroundColor3 = col end
 	box.Odds.Text = oddsLine(r)
+	local oldVP = box:FindFirstChild("QuickVP"); if oldVP then oldVP:Destroy() end
+	if r.Item and r.Item.Animal then
+		local vp = Instance.new("ViewportFrame"); vp.Name = "QuickVP"; vp.Size = UDim2.fromOffset(72, 72)
+		vp.Position = UDim2.new(1, -78, 0.5, -36); vp.BackgroundTransparency = 1
+		vp.Ambient = Color3.fromRGB(200, 195, 230); vp.LightColor = Color3.fromRGB(255, 245, 230); vp.LightDirection = Vector3.new(-1, -1, -1)
+		local tpl = RS.Animals:FindFirstChild(AnimalData.TemplateName(r.Item.Animal))
+		if tpl then
+			local m = tpl:Clone()
+			for _, d in ipairs(m:GetDescendants()) do if d:IsA("LuaSourceContainer") or d:IsA("Humanoid") then d:Destroy() end end
+			m:PivotTo(CFrame.new()); m.Parent = vp
+			local cf, sz = m:GetBoundingBox()
+			local cam = Instance.new("Camera"); cam.FieldOfView = 38; cam.Parent = vp; vp.CurrentCamera = cam
+			local dist = math.max(sz.X, sz.Y, sz.Z) * 1.45
+			cam.CFrame = CFrame.lookAt(cf.Position + Vector3.new(math.sin(0.65) * dist, sz.Y * 0.22, math.cos(0.65) * dist), cf.Position)
+		end
+		vp.Parent = box
+	end
 	local sc = box:FindFirstChildOfClass("UIScale") or Instance.new("UIScale", box)
 	sc.Scale = 0.8; tw(sc, { Scale = 1 }, 0.18, Enum.EasingStyle.Back)
 	sfx(nil, r.TierIndex <= 1 and "Tick" or "Pop", 0.45, 0.95 + math.min(0.6, r.TierIndex * 0.05))
@@ -684,6 +701,24 @@ function Cut.Preview(idx)
 end
 
 ------------------------------------------------------------------ 5x strip
+local function cardViewport(parent, animalName, size, pos)
+	if not animalName then return end
+	local vp = Instance.new("ViewportFrame"); vp.Size = size; vp.Position = pos; vp.BackgroundTransparency = 1; vp.ZIndex = 22
+	vp.Ambient = Color3.fromRGB(200, 195, 230); vp.LightColor = Color3.fromRGB(255, 245, 230); vp.LightDirection = Vector3.new(-1, -1, -1)
+	local tpl = RS.Animals:FindFirstChild(AnimalData.TemplateName(animalName))
+	if tpl then
+		local m = tpl:Clone()
+		for _, d in ipairs(m:GetDescendants()) do if d:IsA("LuaSourceContainer") or d:IsA("Humanoid") then d:Destroy() end end
+		m:PivotTo(CFrame.new()); m.Parent = vp
+		local cf, sz = m:GetBoundingBox()
+		local cam = Instance.new("Camera"); cam.FieldOfView = 38; cam.Parent = vp; vp.CurrentCamera = cam
+		local dist = math.max(sz.X, sz.Y, sz.Z) * 1.45
+		local center = cf.Position
+		cam.CFrame = CFrame.lookAt(center + Vector3.new(math.sin(0.65) * dist, sz.Y * 0.22, math.cos(0.65) * dist), center)
+	end
+	vp.Parent = parent
+end
+
 local function multiStrip(batch)
 	local mr = UI.Gui.MultiReveal
 	UI.Clear(mr)
@@ -691,19 +726,23 @@ local function multiStrip(batch)
 	for i, r in ipairs(batch.Results) do
 		local best = i == batch.BestIndex
 		local col = tierColor(r.TierIndex or AnimalData.TierIndex(r.Rarity))
-		local f = Instance.new("Frame"); f.LayoutOrder = i; f.Size = UDim2.fromOffset(best and 136 or 112, best and 116 or 96); f.ZIndex = 20
+		local f = Instance.new("Frame"); f.LayoutOrder = i; f.Size = UDim2.fromOffset(best and 148 or 124, best and 142 or 122); f.ZIndex = 20
 		UI.Glass(f, 14, col, col:Lerp(WHITE, 0.4))
-		f.Fill.Color = ColorSequence.new(col:Lerp(C(20, 22, 48), best and 0.4 or 0.7), C(12, 14, 30)); f.Stroke.Thickness = best and 3.5 or 1.6
-		local n = UI.Label(f, r.Name, UDim2.new(1, -12, 0, best and 52 or 44), UDim2.fromOffset(6, 8), 15, WHITE, UI.Display, { TextScaled = true, ZIndex = 21 })
-		local cap = Instance.new("UITextSizeConstraint"); cap.MaxTextSize = best and 20 or 16; cap.Parent = n
-		UI.Label(f, AnimalData.FormatRarityShort(r.Rarity), UDim2.new(1, -12, 0, 16), UDim2.new(0, 6, 1, -40), 12, C(210, 210, 235), Enum.Font.GothamBold, { ZIndex = 21 })
-		UI.Label(f, (best and "★ BEST  " or "") .. r.Tier:upper() .. (r.Bonus and "  ★" or ""), UDim2.new(1, -12, 0, 16), UDim2.new(0, 6, 1, -22), 11, col, UI.Display, { ZIndex = 21 })
+		f.Fill.Color = ColorSequence.new(col:Lerp(C(20, 22, 48), best and 0.35 or 0.65), C(12, 14, 30)); f.Stroke.Thickness = best and 3.5 or 2
+		if best and UI.FoilShimmer then UI.FoilShimmer(f, col) end
+		if r.Item and r.Item.Animal then
+			cardViewport(f, r.Item.Animal, UDim2.fromOffset(best and 64 or 54, best and 64 or 54), UDim2.new(0.5, -(best and 32 or 27), 0, 4))
+		end
+		local n = UI.Label(f, r.Name, UDim2.new(1, -12, 0, best and 34 or 28), UDim2.fromOffset(6, best and 66 or 56), 15, WHITE, UI.Display, { TextScaled = true, ZIndex = 21 })
+		local cap = Instance.new("UITextSizeConstraint"); cap.MaxTextSize = best and 18 or 15; cap.Parent = n
+		UI.Label(f, AnimalData.FormatRarityShort(r.Rarity), UDim2.new(1, -12, 0, 16), UDim2.new(0, 6, 1, -38), 12, C(255, 220, 110), Enum.Font.GothamBold, { ZIndex = 21 })
+		UI.Label(f, (best and "★ BEST  " or "") .. r.Tier:upper() .. (r.Bonus and "  ★" or ""), UDim2.new(1, -12, 0, 16), UDim2.new(0, 6, 1, -20), 11, col, UI.Display, { ZIndex = 21 })
 		local sc = Instance.new("UIScale"); sc.Scale = 0.2; sc.Parent = f
 		f.Parent = mr
 		task.delay(i * 0.07, function() tw(sc, { Scale = 1 }, 0.25, Enum.EasingStyle.Back); sfx(nil, "Tick", 0.4, 0.9 + i * 0.08) end)
 	end
 	local token = os.clock(); mr:SetAttribute("Token", token)
-	task.delay(1.9, function() if mr:GetAttribute("Token") == token then mr.Visible = false; UI.Clear(mr) end end)
+	task.delay(2.1, function() if mr:GetAttribute("Token") == token then mr.Visible = false; UI.Clear(mr) end end)
 end
 
 function Cut.PlayBatch(batch)

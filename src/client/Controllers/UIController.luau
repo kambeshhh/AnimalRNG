@@ -46,31 +46,56 @@ local function footer(panel, buttons)
 		if b.Disabled then btn.BackgroundColor3 = C(40, 46, 64); btn.TextColor3 = Config.UI.Muted end
 	end
 end
+local function miniViewport(parent, animal, size, pos, mut)
+	local vp = Instance.new("ViewportFrame"); vp.Name = "MiniVP"; vp.Size = size; vp.Position = pos; vp.BackgroundTransparency = 1
+	vp.Ambient = Color3.fromRGB(190, 185, 220); vp.LightColor = Color3.fromRGB(255, 245, 230); vp.LightDirection = Vector3.new(-1, -1, -1)
+	local tpl = RS.Animals:FindFirstChild(AnimalData.TemplateName(animal))
+	if tpl then
+		local m = tpl:Clone()
+		for _, d in ipairs(m:GetDescendants()) do if d:IsA("LuaSourceContainer") or d:IsA("Humanoid") then d:Destroy() end end
+		local mesh = m:FindFirstChild("AnimalMesh")
+		if mesh and mut and mut ~= "Normal" and AnimalData.Mutations[mut] then
+			if mut == "Sovereign" or mut == "Gilded" then mesh.Color = AnimalData.Mutations[mut].Color end
+		end
+		m:PivotTo(CFrame.new()); m.Parent = vp
+		local cf, sz = m:GetBoundingBox()
+		local cam = Instance.new("Camera"); cam.FieldOfView = 38; cam.Parent = vp; vp.CurrentCamera = cam
+		local dist = math.max(sz.X, sz.Y, sz.Z) * 1.45
+		local center = cf.Position
+		local angle = 0.65
+		cam.CFrame = CFrame.lookAt(center + Vector3.new(math.sin(angle) * dist, sz.Y * 0.22, math.cos(angle) * dist), center)
+	end
+	vp.Parent = parent
+	return vp
+end
+
 local function itemCard(parent, it, order, opts)
 	local r = itemRarity(it)
 	local tier = AnimalData.TierFor(it)
 	local b = Instance.new("TextButton"); b.Text = ""; b.AutoButtonColor = false; b.LayoutOrder = order; b.ClipsDescendants = true
 	UI.Glass(b, 14, tier.Color, tier.Color:Lerp(Color3.new(1, 1, 1), 0.35))
-	b.Fill.Color = ColorSequence.new(tier.Color:Lerp(Color3.new(1, 1, 1), 0.12), tier.Color:Lerp(C(14, 18, 32), 0.55))
+	b.Fill.Color = ColorSequence.new(tier.Color:Lerp(Color3.new(1, 1, 1), 0.14), tier.Color:Lerp(C(14, 18, 32), 0.52))
 	b.Stroke.Thickness = opts.selected and 4 or 3; do local sg = b.Stroke:FindFirstChildOfClass("UIGradient"); if sg then sg.Enabled = false end end; b.Stroke.Color = opts.selected and Color3.new(1, 1, 1) or C(8, 10, 20)
-	local tierIdx = 1; for i, t in ipairs(AnimalData.Tiers) do if t.Name == tier.Name then tierIdx = i end end
+	local tierIdx = AnimalData.ItemTierIndex(it)
 	if tierIdx >= 8 then
 		local glowE = Instance.new("ImageLabel"); glowE.Name = "TierGlow"; glowE.BackgroundTransparency = 1; glowE.Image = "rbxasset://textures/ui/LuaApp/graphic/gr-item-selector-glow.png"
-		glowE.Size = UDim2.fromScale(1, 1); glowE.ImageColor3 = tier.Color; glowE.ImageTransparency = 0.55; glowE.Parent = b
+		glowE.Size = UDim2.fromScale(1, 1); glowE.ImageColor3 = tier.Color; glowE.ImageTransparency = 0.5; glowE.Parent = b
 		if UI.FoilShimmer then UI.FoilShimmer(b, tier.Color) end
 	end
 	local strip = Instance.new("Frame"); strip.Size = UDim2.new(1, 0, 0, 5); strip.BorderSizePixel = 0; strip.BackgroundColor3 = tier.Color; strip.Parent = b
-	local nameLbl = UI.Label(b, AnimalData.ItemName(it), UDim2.new(1, -16, 0, 46), UDim2.fromOffset(8, 12), 16, Config.UI.Text, Enum.Font.FredokaOne, { TextScaled = true, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top })
-	local cap = Instance.new("UITextSizeConstraint"); cap.MaxTextSize = 18; cap.Parent = nameLbl
-	UI.Label(b, AnimalData.FormatRarityShort(r), UDim2.new(1, -16, 0, 18), UDim2.fromOffset(8, 62), 13, Config.UI.Muted, Enum.Font.GothamMedium, { TextXAlignment = Enum.TextXAlignment.Left })
-	local pill = UI.Label(b, tier.Name:upper(), UDim2.fromOffset(0, 20), UDim2.new(0, 8, 1, -28), 11, C(14, 14, 30), Enum.Font.FredokaOne, { AutomaticSize = Enum.AutomaticSize.X, BackgroundTransparency = 0, BackgroundColor3 = tier.Color })
+	-- 3D Animal Model Viewport inside card!
+	miniViewport(b, it.Animal, UDim2.fromOffset(72, 72), UDim2.new(1, -74, 0, 14), it.Mutation)
+	local nameLbl = UI.Label(b, AnimalData.ItemName(it), UDim2.new(1, -76, 0, 44), UDim2.fromOffset(8, 10), 16, Config.UI.Text, Enum.Font.FredokaOne, { TextScaled = true, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top })
+	local cap = Instance.new("UITextSizeConstraint"); cap.MaxTextSize = 17; cap.Parent = nameLbl
+	UI.Label(b, AnimalData.FormatRarityShort(r), UDim2.new(1, -76, 0, 18), UDim2.fromOffset(8, 56), 13, Config.UI.Gold, Enum.Font.GothamBold, { TextXAlignment = Enum.TextXAlignment.Left })
+	local pill = UI.Label(b, string.format("T%d · %s", tierIdx, tier.Name:upper()), UDim2.fromOffset(0, 20), UDim2.new(0, 8, 1, -26), 11, C(14, 14, 30), Enum.Font.FredokaOne, { AutomaticSize = Enum.AutomaticSize.X, BackgroundTransparency = 0, BackgroundColor3 = tier.Color })
 	local pc = Instance.new("UICorner"); pc.CornerRadius = UDim.new(1, 0); pc.Parent = pill
 	local pp = Instance.new("UIPadding"); pp.PaddingLeft = UDim.new(0, 8); pp.PaddingRight = UDim.new(0, 8); pp.Parent = pill
 	local badges = {}
 	if opts.equipped then table.insert(badges, "✅") end
 	if it.Locked then table.insert(badges, "🔒") end
 	if opts.badge then table.insert(badges, opts.badge) end
-	if #badges > 0 then UI.Label(b, table.concat(badges, " "), UDim2.fromOffset(60, 20), UDim2.new(1, -66, 1, -28), 14, Config.UI.Text, nil, { TextXAlignment = Enum.TextXAlignment.Right }) end
+	if #badges > 0 then UI.Label(b, table.concat(badges, " "), UDim2.fromOffset(60, 20), UDim2.new(1, -66, 1, -26), 14, Config.UI.Text, nil, { TextXAlignment = Enum.TextXAlignment.Right }) end
 	UI.Juice(b)
 	if opts.onClick then b.Activated:Connect(opts.onClick) end
 	b.Parent = parent
@@ -351,15 +376,17 @@ end
 render.Index = function(p, data)
 	if indexSpin then indexSpin:Disconnect(); indexSpin = nil end
 	local n = 0; for _ in pairs(data.Index) do n += 1 end
-	local total = #AnimalData.Order * #AnimalData.MutationOrder
+	local totalTiers = #AnimalData.Order * AnimalData.TierCount -- 32 * 28 = 896 Tier Variants
+	local totalMuts = #AnimalData.Order * #AnimalData.MutationOrder -- 32 * 8 = 256 Mutations
+	local total = totalTiers + totalMuts -- 1,152 Total Collection Entries!
 	list(p.Body)
 	local spinners = {}
 	local liveUpdaters = {}
 	local function updateHeader()
 		local luck = math.max(1, player:GetAttribute("Luck") or 1)
 		local _, wInfo = currentWeatherBoosts()
-		p.Subtitle.Text = string.format("%d / %d discovered  •  +%d%% Luck  •  +%d%% Coins  •  Live Luck ×%s (%s)",
-			n, total, n * Config.Luck.IndexPerEntry * 100, n, NF.Luck(luck), wInfo.Display)
+		p.Subtitle.Text = string.format("%d / %d discovered (896 Tier Variants + 256 Mutations)  •  +%d%% Luck  •  Live Luck ×%s (%s)",
+			n, total, n * Config.Luck.IndexPerEntry * 100, NF.Luck(luck), wInfo.Display)
 	end
 	updateHeader()
 	local function dots(parent, animal, pos)
@@ -367,15 +394,29 @@ render.Index = function(p, data)
 		local l = Instance.new("UIListLayout"); l.FillDirection = Enum.FillDirection.Horizontal; l.Padding = UDim.new(0, 4); l.Parent = holder
 		for _, mk in ipairs(AnimalData.MutationOrder) do
 			local key = mk == "Normal" and animal or (animal .. "|" .. mk)
-			local d = Instance.new("Frame"); d.Size = UDim2.fromOffset(12, 12); d.BorderSizePixel = 0
+			local d = Instance.new("Frame"); d.Size = UDim2.fromOffset(11, 11); d.BorderSizePixel = 0
 			d.BackgroundColor3 = data.Index[key] and AnimalData.Mutations[mk].Color or C(40, 44, 64)
 			Instance.new("UICorner", d).CornerRadius = UDim.new(1, 0); d.Parent = holder
 		end
 	end
+	local function tierMasteryBar(parent, animal, pos, width)
+		local holder = Instance.new("Frame"); holder.BackgroundTransparency = 1; holder.Position = pos; holder.Size = UDim2.new(0, width or 150, 0, 18); holder.Parent = parent
+		local tCount, highestT = 0, 0
+		for ti = 1, AnimalData.TierCount do
+			if data.Index[animal .. "|T" .. ti] or (ti == 1 and data.Index[animal]) then
+				tCount += 1
+				highestT = ti
+			end
+		end
+		local bestTier = highestT > 0 and AnimalData.Tiers[highestT] or nil
+		local col = bestTier and bestTier.Color or C(95, 105, 138)
+		local txt = highestT > 0 and string.format("Tiers: %d/28  ·  Best: T%d %s", tCount, highestT, bestTier.Name) or "Tiers: 0/28"
+		UI.Label(holder, txt, UDim2.fromScale(1, 1), UDim2.new(), 11, col, Enum.Font.GothamBlack, { TextScaled = true, TextXAlignment = Enum.TextXAlignment.Left })
+	end
 	-- 1) Unattainable showcase slot
 	local ou = AnimalData.UnattainableCreature
 	local found = data.Index[ou]
-	local top = Instance.new("Frame"); top.Size = UDim2.new(1, -6, 0, 170); top.LayoutOrder = 1
+	local top = Instance.new("Frame"); top.Size = UDim2.new(1, -6, 0, 175); top.LayoutOrder = 1
 	UI.Glass(top, 16, C(255, 255, 255), C(255, 120, 220)); top.Parent = p.Body
 	top.Fill.Color = ColorSequence.new(C(40, 30, 70), C(10, 8, 24))
 	if UI.FoilShimmer then UI.FoilShimmer(top, C(255, 220, 110)) end
@@ -383,10 +424,10 @@ render.Index = function(p, data)
 	rg.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, C(255, 90, 90)), ColorSequenceKeypoint.new(0.33, C(255, 220, 80)), ColorSequenceKeypoint.new(0.66, C(90, 200, 255)), ColorSequenceKeypoint.new(1, C(230, 110, 255)) })
 	local vp, spin = viewport(top, ou, UDim2.fromOffset(170, 160), UDim2.fromOffset(6, 5), found)
 	vp.Parent = top; table.insert(spinners, spin)
-	UI.Label(top, "UNATTAINABLE // MYTHIC GRAIL (ALL ANIMALS ROLLABLE AT TIER 28)", UDim2.new(1, -200, 0, 22), UDim2.fromOffset(186, 14), 15, C(255, 225, 150), UI.Display, { TextXAlignment = Enum.TextXAlignment.Left })
-	UI.Label(top, found and AnimalData.Animals[ou].Display or "???", UDim2.new(1, -200, 0, 40), UDim2.fromOffset(186, 38), 34, Color3.new(1, 1, 1), UI.Display, { TextXAlignment = Enum.TextXAlignment.Left })
+	UI.Label(top, "UNATTAINABLE // MYTHIC GRAIL (ALL 32 ANIMALS × 28 TIERS = 896 VARIANTS)", UDim2.new(1, -200, 0, 22), UDim2.fromOffset(186, 12), 15, C(255, 225, 150), UI.Display, { TextXAlignment = Enum.TextXAlignment.Left })
+	UI.Label(top, found and AnimalData.Animals[ou].Display or "???", UDim2.new(1, -200, 0, 38), UDim2.fromOffset(186, 36), 34, Color3.new(1, 1, 1), UI.Display, { TextXAlignment = Enum.TextXAlignment.Left })
 	local ouBase = AnimalData.Tiers[AnimalData.TierCount].Min
-	local ouOddsLbl = UI.Label(top, "", UDim2.new(1, -200, 0, 20), UDim2.fromOffset(186, 82), 13, C(210, 205, 240), Enum.Font.GothamBold, { TextXAlignment = Enum.TextXAlignment.Left })
+	local ouOddsLbl = UI.Label(top, "", UDim2.new(1, -200, 0, 20), UDim2.fromOffset(186, 76), 13, C(210, 205, 240), Enum.Font.GothamBold, { TextXAlignment = Enum.TextXAlignment.Left })
 	local function updateOuroOdds()
 		local luck = math.max(1, player:GetAttribute("Luck") or 1)
 		local liveT28 = AnimalData.EffectiveTierOdds(AnimalData.TierCount, luck)
@@ -395,8 +436,9 @@ render.Index = function(p, data)
 	end
 	updateOuroOdds()
 	table.insert(liveUpdaters, updateOuroOdds)
-	UI.Label(top, found and "Discovered — the serpent that devours eternity." or "Every animal can drop across all 28 tiers, up to Unattainable!", UDim2.new(1, -200, 0, 18), UDim2.fromOffset(186, 106), 13, Config.UI.Muted, Enum.Font.GothamMedium, { TextXAlignment = Enum.TextXAlignment.Left })
-	dots(top, ou, UDim2.fromOffset(186, 136))
+	UI.Label(top, found and "Discovered — the serpent that devours eternity." or "Every animal can drop across all 28 tiers, up to Unattainable!", UDim2.new(1, -200, 0, 18), UDim2.fromOffset(186, 98), 13, Config.UI.Muted, Enum.Font.GothamMedium, { TextXAlignment = Enum.TextXAlignment.Left })
+	tierMasteryBar(top, ou, UDim2.fromOffset(186, 120), 320)
+	dots(top, ou, UDim2.fromOffset(186, 144))
 	-- 2) groups (rarest first), 4 creatures per row
 	local order = 10
 	for gi = #AnimalData.Groups, 1, -1 do
@@ -404,23 +446,24 @@ render.Index = function(p, data)
 		local members = AnimalData.GroupMembers[g.Key]
 		if #members > 0 then
 			order += 1
-			UI.Label(p.Body, string.format("%s  ·  %d%% of rolls", g.Display:upper(), math.floor(g.EffectiveShare * 1000 + 0.5) / 10), UDim2.new(1, -6, 0, 26), nil, 16, g.Color, UI.Display, { LayoutOrder = order, TextXAlignment = Enum.TextXAlignment.Left })
+			UI.Label(p.Body, string.format("%s  ·  %d%% of rolls  ·  28 Tiers + 8 Mutations per creature", g.Display:upper(), math.floor(g.EffectiveShare * 1000 + 0.5) / 10), UDim2.new(1, -6, 0, 26), nil, 16, g.Color, UI.Display, { LayoutOrder = order, TextXAlignment = Enum.TextXAlignment.Left })
 			local rowF
 			for i, animal in ipairs(members) do
 				if (i - 1) % 4 == 0 then
 					order += 1
-					rowF = Instance.new("Frame"); rowF.BackgroundTransparency = 1; rowF.Size = UDim2.new(1, -6, 0, 150); rowF.LayoutOrder = order; rowF.Parent = p.Body
+					rowF = Instance.new("Frame"); rowF.BackgroundTransparency = 1; rowF.Size = UDim2.new(1, -6, 0, 174); rowF.LayoutOrder = order; rowF.Parent = p.Body
 					local rl = Instance.new("UIListLayout"); rl.FillDirection = Enum.FillDirection.Horizontal; rl.Padding = UDim.new(0, 10); rl.Parent = rowF
 				end
 				local fnd = data.Index[animal]
 				local a = AnimalData.Animals[animal]
 				local f = Instance.new("Frame"); f.Size = UDim2.new(0.25, -8, 1, 0)
 				UI.Glass(f, 12, fnd and g.Color or C(70, 76, 100), C(20, 20, 40)); f.Parent = rowF
-				local v, sp = viewport(f, animal, UDim2.new(1, 0, 0, 82), UDim2.fromOffset(0, 2), fnd); v.Parent = f
+				if fnd and UI.FoilShimmer then UI.FoilShimmer(f, g.Color) end
+				local v, sp = viewport(f, animal, UDim2.new(1, 0, 0, 80), UDim2.fromOffset(0, 2), fnd); v.Parent = f
 				if fnd then table.insert(spinners, sp) else sp(0.6) end
-				UI.Label(f, fnd and a.Display or "???", UDim2.new(1, -12, 0, 22), UDim2.fromOffset(6, 84), 15, fnd and Color3.new(1, 1, 1) or Config.UI.Muted, UI.Display, { TextScaled = true })
+				UI.Label(f, fnd and a.Display or "???", UDim2.new(1, -12, 0, 20), UDim2.fromOffset(6, 82), 15, fnd and Color3.new(1, 1, 1) or Config.UI.Muted, UI.Display, { TextScaled = true })
 				local baseOdds = math.floor(a.Odds + 0.5)
-				local oddsLbl = UI.Label(f, "", UDim2.new(1, -12, 0, 16), UDim2.fromOffset(6, 106), 11, Config.UI.Muted, Enum.Font.GothamBold, { TextScaled = true })
+				local oddsLbl = UI.Label(f, "", UDim2.new(1, -12, 0, 16), UDim2.fromOffset(6, 103), 11, Config.UI.Muted, Enum.Font.GothamBold, { TextScaled = true })
 				local function updateCardOdds()
 					local boosts = currentWeatherBoosts()
 					local liveOdds, bMult = AnimalData.EffectiveCreatureOdds(animal, boosts)
@@ -433,7 +476,8 @@ render.Index = function(p, data)
 				end
 				updateCardOdds()
 				table.insert(liveUpdaters, updateCardOdds)
-				dots(f, animal, UDim2.fromOffset(8, 128))
+				tierMasteryBar(f, animal, UDim2.fromOffset(8, 122), 146)
+				dots(f, animal, UDim2.fromOffset(8, 148))
 			end
 		end
 	end
