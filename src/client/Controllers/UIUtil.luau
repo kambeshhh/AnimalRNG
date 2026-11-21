@@ -16,9 +16,25 @@ if UI.Gui then Theme.ApplyTree(UI.Gui); Theme.Watch(UI.Gui) end
 
 function UI.Tween(obj, props, t, style) local tw = TweenService:Create(obj, TweenInfo.new(t or 0.2, style or Enum.EasingStyle.Quad), props); tw:Play(); return tw end
 
+-- Studio-grade DSP SoundGroups (UI + Cutscene)
+local uiGroup = SoundService:FindFirstChild("AnimalRNG_UIGroup") or Instance.new("SoundGroup")
+uiGroup.Name = "AnimalRNG_UIGroup"; uiGroup.Volume = 1; uiGroup.Parent = SoundService
+
+local cutGroup = SoundService:FindFirstChild("AnimalRNG_CutsceneGroup") or Instance.new("SoundGroup")
+cutGroup.Name = "AnimalRNG_CutsceneGroup"; cutGroup.Volume = 1.05; cutGroup.Parent = SoundService
+if not cutGroup:FindFirstChildOfClass("ReverbSoundEffect") then
+	local rev = Instance.new("ReverbSoundEffect"); rev.DecayTime = 1.65; rev.Density = 0.85; rev.Diffusion = 0.9; rev.DryLevel = 0; rev.WetLevel = -7; rev.Parent = cutGroup
+	local eq = Instance.new("EqualizerSoundEffect"); eq.LowGain = 4.5; eq.MidGain = 0.5; eq.HighGain = 3.0; eq.Parent = cutGroup
+	local comp = Instance.new("CompressorSoundEffect"); comp.Threshold = -8; comp.Ratio = 3; comp.Attack = 0.01; comp.Release = 0.15; comp.Parent = cutGroup
+end
+UI.CutsceneSoundGroup = cutGroup
+UI.UISoundGroup = uiGroup
+
 function UI.Sound(name, volume, pitch)
 	local id = Config.Sounds[name]; if not id then return end
-	local s = Instance.new("Sound"); s.SoundId = id; s.Volume = volume or 0.5; s.PlaybackSpeed = pitch or 1; s.Parent = SoundService
+	local s = Instance.new("Sound"); s.SoundId = id; s.Volume = volume or 0.5; s.PlaybackSpeed = pitch or 1
+	s.SoundGroup = (name == "Bass" or name == "Reveal" or name == "Rise" or name == "Hello" or name == "Low" or name == "Sweep") and cutGroup or uiGroup
+	s.Parent = SoundService
 	s:Play(); s.Ended:Connect(function() s:Destroy() end)
 	task.delay(6, function() if s.Parent then s:Destroy() end end)
 end
@@ -27,14 +43,26 @@ function UI.Juice(btn)
 	if btn:GetAttribute("Juiced") then return end
 	btn:SetAttribute("Juiced", true)
 	local sc = btn:FindFirstChildOfClass("UIScale") or Instance.new("UIScale", btn)
+	local baseRot = btn.Rotation
+	local isIcon = btn.Parent and btn.Parent.Name == "IconBar"
 	btn.MouseEnter:Connect(function()
-		UI.Tween(sc, { Scale = 1.08 }, 0.14, Enum.EasingStyle.Back)
-		UI.Sound("Tick", 0.22, 1.35)
+		UI.Tween(sc, { Scale = isIcon and 1.12 or 1.08 }, 0.15, Enum.EasingStyle.Back)
+		if isIcon then UI.Tween(btn, { Rotation = baseRot - 5 }, 0.14, Enum.EasingStyle.Back) end
+		UI.Sound("Tick", 0.25, 1.32)
 	end)
-	btn.MouseLeave:Connect(function() UI.Tween(sc, { Scale = 1 }, 0.14) end)
-	btn.MouseButton1Down:Connect(function() UI.Tween(sc, { Scale = 0.91 }, 0.05) end)
-	btn.MouseButton1Up:Connect(function() UI.Tween(sc, { Scale = 1.08 }, 0.12, Enum.EasingStyle.Back) end)
-	btn.Activated:Connect(function() UI.Sound("Click", 0.5, 1.05) end)
+	btn.MouseLeave:Connect(function()
+		UI.Tween(sc, { Scale = 1 }, 0.15)
+		if isIcon then UI.Tween(btn, { Rotation = baseRot }, 0.15, Enum.EasingStyle.Back) end
+	end)
+	btn.MouseButton1Down:Connect(function()
+		UI.Tween(sc, { Scale = 0.9 }, 0.05)
+		if isIcon then UI.Tween(btn, { Rotation = baseRot + 4 }, 0.05) end
+	end)
+	btn.MouseButton1Up:Connect(function()
+		UI.Tween(sc, { Scale = isIcon and 1.12 or 1.08 }, 0.13, Enum.EasingStyle.Back)
+		if isIcon then UI.Tween(btn, { Rotation = baseRot }, 0.13, Enum.EasingStyle.Back) end
+	end)
+	btn.Activated:Connect(function() UI.Sound("Click", 0.52, 1.04) end)
 end
 
 function UI.JuiceAll(root)

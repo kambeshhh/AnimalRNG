@@ -62,18 +62,128 @@ function T.Apply(d)
 	end
 	if d.Name == "Wallet" and d:IsA("Frame") then
 		d.Size = UDim2.fromOffset(310, 84)
+		d.BackgroundColor3 = C(12, 16, 32); d.BackgroundTransparency = 0.08
+		local fill = d:FindFirstChild("Fill")
+		if fill and fill:IsA("UIGradient") then fill.Color = T.GlassFill end
 		local coins = d:FindFirstChild("Coins")
-		if coins and coins:IsA("TextLabel") then coins.TextScaled = true end
+		if coins and coins:IsA("TextLabel") then coins.TextScaled = true; coins.TextColor3 = K.Gold end
 		local mats = d:FindFirstChild("Materials")
 		if mats then
 			for _, m in ipairs(mats:GetChildren()) do
 				if m:IsA("TextLabel") then
 					m.AutomaticSize = Enum.AutomaticSize.X
+					m.BackgroundColor3 = C(20, 26, 52); m.BackgroundTransparency = 0.15
+					if not m:FindFirstChildOfClass("UICorner") then
+						local mc = Instance.new("UICorner"); mc.CornerRadius = UDim.new(1, 0); mc.Parent = m
+					end
 					if not m:FindFirstChildOfClass("UIPadding") then
-						local pad = Instance.new("UIPadding"); pad.PaddingLeft = UDim.new(0, 6); pad.PaddingRight = UDim.new(0, 6); pad.Parent = m
+						local pad = Instance.new("UIPadding"); pad.PaddingLeft = UDim.new(0, 7); pad.PaddingRight = UDim.new(0, 7); pad.Parent = m
 					end
 				end
 			end
+		end
+	elseif d.Name == "RollDock" and d:IsA("Frame") then
+		local bar = d:FindFirstChild("Bar")
+		if bar and bar:IsA("Frame") then
+			bar.BackgroundTransparency = 0.08
+			bar.BackgroundColor3 = C(12, 16, 32)
+			local fill = bar:FindFirstChild("Fill") or Instance.new("UIGradient", bar)
+			fill.Name = "Fill"; fill.Rotation = 90; fill.Color = T.GlassFill
+			local st = bar:FindFirstChild("Stroke") or bar:FindFirstChildOfClass("UIStroke")
+			if st then st.Transparency = 0.15; st.Thickness = 3; st.Color = K.Cyan end
+		end
+		local rb = d:FindFirstChild("RollButton")
+		if rb and rb:IsA("GuiButton") then
+			rb.BackgroundColor3 = Color3.new(1, 1, 1)
+			local fg = rb:FindFirstChildOfClass("UIGradient") or Instance.new("UIGradient", rb)
+			fg.Rotation = 90
+			fg.Color = ColorSequence.new({
+				ColorSequenceKeypoint.new(0, C(70, 255, 165)),
+				ColorSequenceKeypoint.new(0.5, C(25, 220, 125)),
+				ColorSequenceKeypoint.new(1, C(15, 155, 95)),
+			})
+			local gl = rb:FindFirstChild("Glow")
+			if gl and gl:IsA("UIStroke") then gl.Color = C(110, 255, 200); gl.Thickness = 3.5; gl.Transparency = 0 end
+		end
+		local mb = d:FindFirstChild("MultiButton")
+		if mb and mb:IsA("GuiButton") then
+			mb.BackgroundColor3 = Color3.new(1, 1, 1)
+			local fg = mb:FindFirstChildOfClass("UIGradient") or Instance.new("UIGradient", mb)
+			fg.Rotation = 90
+			fg.Color = ColorSequence.new({
+				ColorSequenceKeypoint.new(0, C(255, 225, 75)),
+				ColorSequenceKeypoint.new(0.5, C(255, 150, 35)),
+				ColorSequenceKeypoint.new(1, C(225, 65, 130)),
+			})
+			local st = mb:FindFirstChildOfClass("UIStroke")
+			if st then st.Color = C(255, 215, 80); st.Thickness = 3; st.Transparency = 0 end
+		end
+		local chips = d:FindFirstChild("Chips")
+		if chips then
+			for _, ch in ipairs(chips:GetChildren()) do
+				if ch:IsA("GuiObject") then
+					ch.BackgroundColor3 = C(16, 22, 46); ch.BackgroundTransparency = 0.06
+					local cst = ch:FindFirstChildOfClass("UIStroke")
+					if cst then
+						cst.Thickness = 2.5
+						cst.Color = (ch.Name == "Luck") and K.Gold or ((ch.Name == "Weather") and K.Cyan or C(130, 150, 210))
+						cst.Transparency = 0.1
+					end
+				end
+			end
+		end
+	elseif d.Parent and d.Parent.Name == "IconBar" and d:IsA("GuiButton") then
+		local accents = {
+			InventoryButton = C(55, 215, 255),
+			IndexButton     = C(185, 120, 255),
+			RankButton      = C(255, 195, 50),
+			PotionsButton   = C(75, 245, 150),
+			GiftsButton     = C(255, 95, 195),
+			ShopButton      = C(255, 220, 65),
+			SettingsButton  = C(150, 175, 225),
+			AdminButton     = C(255, 75, 95),
+			VIPButton       = C(215, 115, 255),
+		}
+		local acc = accents[d.Name] or K.Cyan
+		d.BackgroundColor3 = Color3.new(1, 1, 1); d.BackgroundTransparency = 0.04
+		local fg = d:FindFirstChild("TileGrad") or d:FindFirstChildOfClass("UIGradient") or Instance.new("UIGradient", d)
+		fg.Name = "TileGrad"; fg.Rotation = 135
+		fg.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, acc:Lerp(C(48, 64, 118), 0.55)),
+			ColorSequenceKeypoint.new(0.55, C(24, 32, 64)),
+			ColorSequenceKeypoint.new(1, C(12, 16, 36)),
+		})
+		local st = d:FindFirstChild("Stroke") or d:FindFirstChildOfClass("UIStroke")
+		if st and st.Name ~= "SelectRing" then
+			st.Color = acc; st.Thickness = 2.5; st.Transparency = 0.15
+		end
+		local lbl = d:FindFirstChild("Label")
+		if lbl and lbl:IsA("TextLabel") then lbl.TextColor3 = Color3.new(1, 1, 1) end
+	elseif d.Name:match("Panel$") and (d:IsA("CanvasGroup") or d:IsA("Frame")) then
+		d.BackgroundColor3 = Color3.new(1, 1, 1); d.BackgroundTransparency = 0.03
+		local fill = d:FindFirstChild("Fill") or Instance.new("UIGradient", d)
+		fill.Name = "Fill"; fill.Rotation = 110
+		fill.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, C(34, 46, 92)),
+			ColorSequenceKeypoint.new(0.45, C(18, 24, 52)),
+			ColorSequenceKeypoint.new(1, C(10, 13, 28)),
+		})
+		local st = d:FindFirstChild("Stroke")
+		if st and st:IsA("UIStroke") then
+			st.Thickness = 3.5; st.Color = Color3.new(1, 1, 1)
+			local sg = st:FindFirstChild("PanelBorderGrad") or Instance.new("UIGradient", st)
+			sg.Name = "PanelBorderGrad"; sg.Rotation = 35; sg.Color = T.GrailGradient
+		end
+		local title = d:FindFirstChild("Title")
+		if title and title:IsA("TextLabel") then
+			title.TextColor3 = Color3.new(1, 1, 1)
+			local tg = title:FindFirstChild("TitleGrad") or Instance.new("UIGradient", title)
+			tg.Name = "TitleGrad"; tg.Rotation = 90
+			tg.Color = ColorSequence.new(Color3.new(1, 1, 1), C(170, 225, 255))
+		end
+		local closeBtn = d:FindFirstChild("Close")
+		if closeBtn and closeBtn:IsA("GuiButton") then
+			closeBtn.BackgroundColor3 = C(235, 55, 80); closeBtn.TextColor3 = Color3.new(1, 1, 1)
 		end
 	end
 	if d:IsA("TextLabel") or d:IsA("TextButton") then
@@ -83,7 +193,7 @@ function T.Apply(d)
 	elseif d:IsA("TextBox") then
 		d.FontFace = T.Fonts.Input
 	elseif d:IsA("UIGradient") then
-		if d.Name == "Fill" then
+		if d.Name == "Fill" and not (d.Parent and d.Parent.Name:match("Panel$")) then
 			local c0 = d.Color.Keypoints[1].Value
 			for _, g in OLD_GLASS do if close(c0, g) then d.Color = T.GlassFill; break end end
 		end
@@ -97,7 +207,10 @@ function T.Apply(d)
 				if p and (p:IsA("TextLabel") or p:IsA("TextButton")) then local c = p.TextColor3; if (0.299 * c.R + 0.587 * c.G + 0.114 * c.B) < 0.3 then d.Transparency = 1 end end
 			end
 		elseif (d.Name == "Stroke" or d.Name == "Inner") and (close(d.Color, C(42, 50, 71)) or close(d.Color, Color3.new(1, 1, 1))) and not d:FindFirstChildWhichIsA("UIGradient") then
-			d.Color = K.Outline; d.Thickness = 3; d.Transparency = 0
+			local par = d.Parent
+			if not (par and (par.Name:match("Panel$") or (par.Parent and par.Parent.Name == "IconBar") or par.Name == "Bar")) then
+				d.Color = K.Outline; d.Thickness = 3; d.Transparency = 0
+			end
 		end
 	elseif d:IsA("UICorner") then
 		if d.CornerRadius.Scale == 0 and d.CornerRadius.Offset >= 8 and d.CornerRadius.Offset < 14 then d.CornerRadius = UDim.new(0, 12) end

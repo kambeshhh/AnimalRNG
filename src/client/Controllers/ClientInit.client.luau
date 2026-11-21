@@ -1,11 +1,17 @@
--- ClientInit: boots every client controller & preloads custom VFX textures
+-- ClientInit: boots every client controller & preloads custom VFX textures + custom 44.1kHz WAV SFX
 local RS = game:GetService("ReplicatedStorage")
 local ContentProvider = game:GetService("ContentProvider")
 task.spawn(function()
 	local ok, Config = pcall(require, RS:WaitForChild("Modules"):WaitForChild("Config"))
-	if ok and Config and Config.VFXTextures then
+	if ok and Config then
 		local list = {}
-		for _, id in pairs(Config.VFXTextures) do table.insert(list, id) end
+		local seen = {}
+		for _, id in pairs(Config.VFXTextures or {}) do
+			if not seen[id] then seen[id] = true; table.insert(list, id) end
+		end
+		for _, id in pairs(Config.Sounds or {}) do
+			if not seen[id] then seen[id] = true; table.insert(list, id) end
+		end
 		pcall(function() ContentProvider:PreloadAsync(list) end)
 	end
 end)

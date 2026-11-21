@@ -821,7 +821,7 @@ function Ctl.Open(name)
 	for _, n in ipairs({ "Inventory", "Index", "Rank", "Potions", "Gifts", "Shop", "Settings", "Admin", "VIP" }) do
 		local b = gui.IconBar[n .. "Button"]
 		UI.Tween(b.SelectRing, { Transparency = (open == n) and 0 or 1 }, 0.15)
-		UI.Tween(b, { BackgroundColor3 = (open == n) and C(255, 255, 255) or C(190, 198, 216) }, 0.15)
+		UI.Tween(b, { BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = (open == n) and 0 or 0.06 }, 0.15)
 	end
 	gui.Backdrop.Visible = open ~= nil
 	if open then

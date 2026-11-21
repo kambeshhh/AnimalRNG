@@ -98,11 +98,15 @@ for _, item in ipairs(FILES) do
 	end
 end
 
--- Also clean up StarterGui.RNGHud directly in Edit Mode so you see the clean UI immediately!
+-- Also apply the AAA Neon-Obsidian UITheme directly to StarterGui.RNGHud in Edit Mode so you see the clean UI immediately!
 pcall(function()
 	local StarterGui = game:GetService("StarterGui")
 	local hud = StarterGui:FindFirstChild("RNGHud")
 	if hud then
+		local okT, UITheme = pcall(require, ReplicatedStorage:WaitForChild("Modules"):WaitForChild("UITheme"))
+		if okT and UITheme and UITheme.ApplyTree then
+			UITheme.ApplyTree(hud)
+		end
 		for _, d in ipairs(hud:GetDescendants()) do
 			if (d:IsA("TextLabel") or d:IsA("TextButton")) and d.TextTransparency >= 0.95 then
 				local st = d:FindFirstChildOfClass("UIStroke")
@@ -111,19 +115,7 @@ pcall(function()
 				end
 			end
 		end
-		local wallet = hud:FindFirstChild("Wallet")
-		if wallet and wallet:IsA("Frame") then
-			wallet.Size = UDim2.fromOffset(310, 84)
-			local coins = wallet:FindFirstChild("Coins")
-			if coins and coins:IsA("TextLabel") then coins.TextScaled = true end
-			local mats = wallet:FindFirstChild("Materials")
-			if mats then
-				for _, m in ipairs(mats:GetChildren()) do
-					if m:IsA("TextLabel") then m.AutomaticSize = Enum.AutomaticSize.X end
-				end
-			end
-		end
-		print("  ✓ [ScreenGui] Cleaned StarterGui.RNGHud in Edit Mode!")
+		print("  ✓ [ScreenGui] Restyled & cleaned StarterGui.RNGHud with AAA Neon-Obsidian UITheme in Edit Mode!")
 	end
 end)
 

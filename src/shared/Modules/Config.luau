@@ -258,22 +258,22 @@ Config.Codes = {
 	UPDATE1   = { Spins = 2, Essence = 2500, Coins = 10000,                                 Desc = "2 Lucky Spins, 2,500 Essence & 10,000 Coins" },
 }
 
--- Built-in engine sounds (always available, no uploads needed). Layered for flashy multi-harmonic SFX.
+-- Custom-Synthesized 44.1kHz Studio WAV SFX uploaded via Open Cloud + multi-harmonic layering
 Config.Sounds = {
-	Tick   = "rbxassetid://15675032796", -- Roblox_UI_Small_Click
-	Click  = "rbxassetid://15675059323", -- Roblox_UI_Bright_Click
-	Pop    = "rbxassetid://15675055424", -- Roblox_UI_Cute_Pop
-	Sweep  = "rbxassetid://15675046931", -- Roblox_UI_Sweep (build-up)
-	Reveal = "rbxassetid://15675043410", -- Roblox_UI_Tonal_Stinger
-	Bass   = "rbxassetid://9038652624",  -- APM: Big Hair Rock - Hit 3
-	Roar   = "rbxassetid://9038652624",
-	Whoosh = "rbxassetid://15674975792", -- Roblox_UI_Whoosh_03 (dice throw)
-	Fail   = "rbxassetid://15675075163", -- Roblox_UI_Delete
-	Rise   = "rbxassetid://15675028888", -- Roblox_UI_Whoosh_02 (tension riser)
-	Swish  = "rbxassetid://15675024286", -- Roblox_UI_Whoosh_01 (dice bounce)
-	Chime  = "rbxassetid://15675085146", -- Roblox_UI_Indicator (crystal shatter / coin chime)
-	Hello  = "rbxassetid://15675016548", -- Roblox_UI_Piano_Hello (bonus roll / rebirth chord)
-	Low    = "rbxassetid://15675062723", -- Roblox_UI_Whistle_Low (Unattainable build-up)
+	Tick   = "rbxassetid://109206875073924", -- AnimalRNG_CrystalClick_SFX (2-note B5->E6 crystal UI click)
+	Click  = "rbxassetid://109206875073924", -- AnimalRNG_CrystalClick_SFX
+	Pop    = "rbxassetid://96656639124588",  -- AnimalRNG_DiceShatter_SFX (crystalline pop & bounce)
+	Sweep  = "rbxassetid://109623748397861", -- AnimalRNG_TensionRiser_SFX (exponential synth riser + heartbeat)
+	Reveal = "rbxassetid://84720159679329",  -- AnimalRNG_StarburstChord_SFX (2.4s celestial starburst choir & bell triad)
+	Bass   = "rbxassetid://120971850259619", -- AnimalRNG_SubBassDrop_SFX (1.5s 110Hz->35Hz cinematic sub-bass drop)
+	Roar   = "rbxassetid://120971850259619", -- AnimalRNG_SubBassDrop_SFX
+	Whoosh = "rbxassetid://96656639124588",  -- AnimalRNG_DiceShatter_SFX (dice throw & bounce)
+	Fail   = "rbxassetid://15675075163",     -- Roblox_UI_Delete
+	Rise   = "rbxassetid://109623748397861", -- AnimalRNG_TensionRiser_SFX (tension riser)
+	Swish  = "rbxassetid://96656639124588",  -- AnimalRNG_DiceShatter_SFX (dice bounce)
+	Chime  = "rbxassetid://109206875073924", -- AnimalRNG_CrystalClick_SFX (crystal shatter / coin chime)
+	Hello  = "rbxassetid://84720159679329",  -- AnimalRNG_StarburstChord_SFX (bonus roll / rebirth chord)
+	Low    = "rbxassetid://120971850259619", -- AnimalRNG_SubBassDrop_SFX (Unattainable build-up sub-bass)
 }
 
 Config.UI = {

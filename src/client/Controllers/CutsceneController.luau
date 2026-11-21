@@ -91,7 +91,8 @@ local function rootPart() return player.Character and player.Character.PrimaryPa
 
 local function sfx(J, name, vol, pitch)
 	local id = Config.Sounds[name]; if not id then return end
-	local s = Instance.new("Sound"); s.Name = "CutsceneSFX"; s.SoundId = id; s.Volume = math.min(vol or 0.6, 0.85); s.PlaybackSpeed = pitch or 1
+	local s = Instance.new("Sound"); s.Name = "CutsceneSFX"; s.SoundId = id; s.Volume = math.min(vol or 0.65, 0.9); s.PlaybackSpeed = pitch or 1
+	if UI.CutsceneSoundGroup then s.SoundGroup = UI.CutsceneSoundGroup end
 	s.Parent = SoundService; s:Play()
 	s.Ended:Once(function() s:Destroy() end)
 	if J then J:add(s); table.insert(J.sounds, s) else Debris:AddItem(s, 6) end
@@ -375,17 +376,33 @@ local function throwDice3D(batch)
 		task.wait()
 	end
 
-	-- Shatter burst on impact
+	-- Shatter burst on impact + 3D floating rarity popup at each die landing point
 	local bestD = dice[batch.BestIndex or 1] or dice[1]
 	local shatterPitch = math.clamp(0.85 + (bestD.tierIdx or 1) * 0.035, 0.85, 1.75)
-	sfx(nil, "Chime", 0.55, shatterPitch)
-	sfx(nil, "Pop", 0.5, shatterPitch * 0.95)
-	for _, d in ipairs(dice) do
-		burstAt(J, d.p1, (d.tierIdx >= 25 or dieCfg.Rainbow) and RAINBOW or d.col, d.best and 42 or 20, d.best and 22 or 14)
-		shockwave(J, d.p1 - Vector3.new(0, 0.8, 0), d.col, d.best and 14 or 8, 0.48)
+	sfx(nil, "Chime", 0.65, shatterPitch)
+	sfx(nil, "Pop", 0.58, shatterPitch * 0.95)
+	for i, d in ipairs(dice) do
+		local r = batch.Results[i]
+		burstAt(J, d.p1, (d.tierIdx >= 25 or dieCfg.Rainbow) and RAINBOW or d.col, d.best and 48 or 24, d.best and 24 or 15)
+		shockwave(J, d.p1 - Vector3.new(0, 0.8, 0), d.col, d.best and 15 or 9, 0.52)
 		d.part.Transparency = 1
+		if r then
+			local bb = Instance.new("BillboardGui"); bb.Size = UDim2.fromOffset(d.best and 210 or 160, d.best and 56 or 42)
+			bb.StudsOffsetWorldSpace = Vector3.new(0, 1.5, 0); bb.AlwaysOnTop = true; bb.LightInfluence = 0
+			local anchor = Instance.new("Part"); anchor.Anchored = true; anchor.CanCollide = false; anchor.CanQuery = false; anchor.CanTouch = false
+			anchor.Transparency = 1; anchor.Size = Vector3.new(0.2, 0.2, 0.2); anchor.Position = d.p1; anchor.Parent = workspace; J:add(anchor)
+			bb.Adornee = anchor
+			local lbl = Instance.new("TextLabel"); lbl.Size = UDim2.fromScale(1, 1); lbl.BackgroundTransparency = 1
+			lbl.FontFace = UI.Theme.Fonts.Black; lbl.TextScaled = true; lbl.RichText = true
+			lbl.Text = string.format("%s\n<font size='13' color='#FFD166'>%s</font>", r.Name, AnimalData.FormatRarityShort(r.Rarity))
+			lbl.TextColor3 = d.col; lbl.Parent = bb
+			local st = Instance.new("UIStroke"); st.Thickness = 2.5; st.Color = C(8, 10, 22); st.Parent = lbl
+			bb.Parent = player:WaitForChild("PlayerGui"); J:add(bb)
+			tw(bb, { StudsOffsetWorldSpace = Vector3.new(0, 5.2, 0) }, 0.68, Enum.EasingStyle.Back)
+			task.delay(0.45, function() if lbl.Parent then tw(lbl, { TextTransparency = 1 }, 0.25); tw(st, { Transparency = 1 }, 0.25) end end)
+		end
 	end
-	task.delay(0.55, function() J:clean() end)
+	task.delay(0.75, function() J:clean() end)
 end
 
 -- World Power-Up VFX & multi-harmonic SFX for Rebirth, Dice Unlock, Skill Upgrade & Code Redemption
@@ -396,10 +413,10 @@ function Cut.PowerUpFX(payload)
 	local root = rootPart()
 	if kind == "Rebirth" then
 		flash(0.55, col)
-		sfx(nil, "Bass", 0.8, 0.65)
-		sfx(nil, "Reveal", 0.65, 0.9)
-		sfx(nil, "Hello", 0.6, 1.05)
-		task.delay(0.15, function() sfx(nil, "Chime", 0.6, 1.35) end)
+		sfx(nil, "Bass", 0.85, 0.65)
+		sfx(nil, "Reveal", 0.75, 0.95)
+		sfx(nil, "Hello", 0.65, 1.05)
+		task.delay(0.15, function() sfx(nil, "Chime", 0.65, 1.35) end)
 		ring(J, col, 680, 0.75, 7)
 		ring(J, WHITE, 520, 0.55, 5)
 		if root then
@@ -409,16 +426,16 @@ function Cut.PowerUpFX(payload)
 		end
 	elseif kind == "Die" or kind == "LuckySpin" then
 		flash(0.32, col)
-		sfx(nil, "Reveal", 0.55, 1.15)
-		sfx(nil, "Chime", 0.55, 1.4)
+		sfx(nil, "Reveal", 0.65, 1.15)
+		sfx(nil, "Chime", 0.6, 1.4)
 		ring(J, col, 460, 0.5, 5)
 		if root then
 			burstAt(J, root.Position, col, 65, 20)
 			shockwave(J, root.Position - Vector3.new(0, 2.5, 0), col, 26, 0.65)
 		end
 	else
-		sfx(nil, "Chime", 0.5, 1.25)
-		sfx(nil, "Pop", 0.45, 1.3)
+		sfx(nil, "Chime", 0.55, 1.25)
+		sfx(nil, "Pop", 0.5, 1.3)
 		if root then
 			burstAt(J, root.Position, col, 35, 15)
 			shockwave(J, root.Position - Vector3.new(0, 2.5, 0), col, 16, 0.45)
@@ -492,14 +509,40 @@ local function starOpen(J, r, col, rainbow, buildT)
 	runeImg.Size = UDim2.fromOffset(50, 50); runeImg.BackgroundTransparency = 1; runeImg.Image = texRune or ""
 	runeImg.ImageColor3 = col:Lerp(WHITE, 0.45); runeImg.ImageTransparency = 0.15; runeImg.Parent = st; J:add(runeImg)
 
+	-- High-detail 3D Spinning Animal Showcase in the center of StarReveal!
+	local oldVP = st:FindFirstChild("StarShowcaseVP"); if oldVP then oldVP:Destroy() end
+	local vpModel
+	if r.Item and r.Item.Animal then
+		local vp = Instance.new("ViewportFrame"); vp.Name = "StarShowcaseVP"
+		vp.AnchorPoint = Vector2.new(0.5, 0.5); vp.Position = UDim2.fromScale(0.5, 0.38); vp.Size = UDim2.fromOffset(220, 220)
+		vp.BackgroundTransparency = 1; vp.ZIndex = st.Emblem.ZIndex + 3
+		vp.Ambient = C(210, 210, 245); vp.LightColor = col:Lerp(WHITE, 0.5); vp.LightDirection = Vector3.new(-1, -1, -1)
+		local tpl = RS.Animals:FindFirstChild(AnimalData.TemplateName(r.Item.Animal))
+		if tpl then
+			local m = tpl:Clone()
+			for _, d in ipairs(m:GetDescendants()) do if d:IsA("LuaSourceContainer") or d:IsA("Humanoid") then d:Destroy() end end
+			m:PivotTo(CFrame.new()); m.Parent = vp
+			local cf, sz = m:GetBoundingBox()
+			local cam = Instance.new("Camera"); cam.FieldOfView = 36; cam.Parent = vp; vp.CurrentCamera = cam
+			local dist = math.max(sz.X, sz.Y, sz.Z) * 1.42
+			cam.CFrame = CFrame.lookAt(cf.Position + Vector3.new(0, sz.Y * 0.2, dist), cf.Position)
+			vpModel = m
+		end
+		vp.Parent = st; J:add(vp)
+	end
+
 	local t0 = os.clock()
 	J:conn(RunService.RenderStepped:Connect(function(dt)
+		local el = os.clock() - t0
 		st.Emblem.Rotation += dt * 175
 		starImg.Rotation += dt * 140
 		runeImg.Rotation -= dt * 95
-		local beat = 1 + math.sin((os.clock() - t0) * 14) * 0.14
+		local beat = 1 + math.sin(el * 14) * 0.14
 		starImg.Size = UDim2.fromOffset(275 * beat, 275 * beat)
 		runeImg.Size = UDim2.fromOffset(325 * beat, 325 * beat)
+		if vpModel then
+			vpModel:PivotTo(CFrame.Angles(0, el * 2.2, 0))
+		end
 	end))
 end
 local function starReveal(r, col)
