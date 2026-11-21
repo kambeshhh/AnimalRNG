@@ -38,7 +38,7 @@ local function buildWorld2AndPortals()
 	vortex.Parent = portalModel
 
 	local pl = Instance.new("PointLight"); pl.Color = C(34, 235, 255); pl.Range = 36; pl.Brightness = 3.5; pl.Parent = vortex
-	local em = Instance.new("ParticleEmitter"); em.Texture = (Config.VFXTextures and Config.VFXTextures.Starburst) or "rbxasset://textures/particles/sparkles_main.dds"
+	local em = Instance.new("ParticleEmitter"); em.Texture = "rbxasset://textures/particles/sparkles_main.dds"
 	em.Color = ColorSequence.new(C(34, 235, 255), C(210, 110, 255)); em.LightEmission = 1; em.Rate = 38
 	em.Size = NumberSequence.new(1.1, 0); em.Lifetime = NumberRange.new(1.2, 2.4); em.Speed = NumberRange.new(3, 8); em.SpreadAngle = Vector2.new(180, 180)
 	em.Parent = vortex
