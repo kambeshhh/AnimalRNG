@@ -93,10 +93,10 @@ Config.Weather = {
 
 -- Custom-rendered VFX Textures uploaded to Roblox Open Cloud + Real 3D AssetLibrary MeshIds
 Config.VFXTextures = {
-	SacredSigil = "rbxassetid://112627895709195", -- 512x512 Sacred Geometry Outer Magic Circle
-	Starburst   = "rbxassetid://128268449855777", -- 512x512 Sol's RNG 8-Pointed Sharp Starburst
-	ArcaneRune  = "rbxassetid://116675359776426", -- 512x512 Inner Arcane Hexagram & Rune Ring
-	Shockwave   = "rbxassetid://110393091506919", -- 512x512 Radial Impact Shockwave Ring
+	SacredSigil = "rbxthumb://type=Asset&id=84970895257055&w=420&h=420", -- 512x512 Sacred Geometry Outer Magic Circle
+	Starburst   = "rbxthumb://type=Asset&id=107753862044886&w=420&h=420", -- 512x512 Sol's RNG 8-Pointed Sharp Starburst
+	ArcaneRune  = "rbxthumb://type=Asset&id=131937264384749&w=420&h=420", -- 512x512 Inner Arcane Hexagram & Rune Ring
+	Shockwave   = "rbxthumb://type=Asset&id=106947964792162&w=420&h=420", -- 512x512 Radial Impact Shockwave Ring
 }
 
 -- Sol's RNG x Anime Dice: 3D Wearable Relics & Gauntlets (orbit around player character with real 3D meshes, glowing beams & trails)

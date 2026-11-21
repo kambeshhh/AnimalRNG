@@ -98,6 +98,35 @@ for _, item in ipairs(FILES) do
 	end
 end
 
+-- Also clean up StarterGui.RNGHud directly in Edit Mode so you see the clean UI immediately!
+pcall(function()
+	local StarterGui = game:GetService("StarterGui")
+	local hud = StarterGui:FindFirstChild("RNGHud")
+	if hud then
+		for _, d in ipairs(hud:GetDescendants()) do
+			if (d:IsA("TextLabel") or d:IsA("TextButton")) and d.TextTransparency >= 0.95 then
+				local st = d:FindFirstChildOfClass("UIStroke")
+				if st and st.ApplyStrokeMode == Enum.ApplyStrokeMode.Contextual then
+					st.Transparency = 1
+				end
+			end
+		end
+		local wallet = hud:FindFirstChild("Wallet")
+		if wallet and wallet:IsA("Frame") then
+			wallet.Size = UDim2.fromOffset(310, 84)
+			local coins = wallet:FindFirstChild("Coins")
+			if coins and coins:IsA("TextLabel") then coins.TextScaled = true end
+			local mats = wallet:FindFirstChild("Materials")
+			if mats then
+				for _, m in ipairs(mats:GetChildren()) do
+					if m:IsA("TextLabel") then m.AutomaticSize = Enum.AutomaticSize.X end
+				end
+			end
+		end
+		print("  ✓ [ScreenGui] Cleaned StarterGui.RNGHud in Edit Mode!")
+	end
+end)
+
 print("==================================================")
 if failCount == 0 then
 	print(string.format("🎉 [Animal RNG] SUCCESS! Synced all %d scripts directly from GitHub!", successCount))
