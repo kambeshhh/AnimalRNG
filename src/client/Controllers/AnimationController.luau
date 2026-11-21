@@ -124,6 +124,21 @@ task.spawn(function()
 							end
 						end
 					end
+					local sigil = root:FindFirstChild("SacredSigil")
+					local plate = sigil and sigil:FindFirstChild("SigilPlate")
+					local sg = plate and plate:FindFirstChildOfClass("SurfaceGui")
+					if sg then
+						local o = sg:FindFirstChild("OuterSigil")
+						local ir = sg:FindFirstChild("InnerRune")
+						local cs = sg:FindFirstChild("CoreStar")
+						if o and o:IsA("GuiObject") then o.Rotation = (t * 26) % 360 end
+						if ir and ir:IsA("GuiObject") then ir.Rotation = (-t * 42) % 360 end
+						if cs and cs:IsA("GuiObject") then
+							cs.Rotation = (t * 68) % 360
+							local pulse = 0.5 + math.sin(t * 5) * 0.06
+							cs.Size = UDim2.fromScale(pulse, pulse)
+						end
+					end
 				end
 				-- Slime RNG x Anime Dice: Bouncy 3D Companion Pack following in V-formation
 				local pack = c:FindFirstChild("Companions")

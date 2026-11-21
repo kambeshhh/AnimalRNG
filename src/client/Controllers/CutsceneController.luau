@@ -135,6 +135,16 @@ local function impactFrame(J, color)
 end
 
 local function ring(J, color, size, t, thick)
+	local tex = Config.VFXTextures and Config.VFXTextures.Shockwave
+	if tex then
+		local img = Instance.new("ImageLabel"); img.AnchorPoint = Vector2.new(0.5, 0.5); img.Position = UDim2.fromScale(0.5, 0.5)
+		img.Size = UDim2.fromOffset(30, 30); img.BackgroundTransparency = 1; img.Image = tex; img.ImageColor3 = color
+		img.ImageTransparency = 0.05; img.Rotation = math.random(0, 360)
+		img.Parent = fx.Center; J:add(img)
+		tw(img, { Size = UDim2.fromOffset(size, size), ImageTransparency = 1, Rotation = img.Rotation + 90 }, t, Enum.EasingStyle.Quart)
+		Debris:AddItem(img, t + 0.05)
+		return
+	end
 	local f = Instance.new("Frame"); f.AnchorPoint = Vector2.new(0.5, 0.5); f.Position = UDim2.fromScale(0.5, 0.5); f.Size = UDim2.fromOffset(30, 30); f.BackgroundTransparency = 1
 	Instance.new("UICorner", f).CornerRadius = UDim.new(1, 0)
 	local s = Instance.new("UIStroke"); s.Color = color; s.Thickness = thick or 5; s.Parent = f
@@ -453,16 +463,26 @@ local function starOpen(J, r, col, rainbow, buildT)
 	tw(st, { BackgroundTransparency = 0.28 }, 0.3)
 	st.Emblem.Size = UDim2.fromOffset(30, 30); st.Emblem.Rotation = 0
 	tw(st.Emblem, { Size = UDim2.fromOffset(235, 235) }, math.max(0.3, buildT), Enum.EasingStyle.Back)
-	-- Sol's RNG counter-rotating 8-point secondary star overlay + beat pulses
-	local pulseRing = Instance.new("Frame"); pulseRing.AnchorPoint = Vector2.new(0.5, 0.5); pulseRing.Position = UDim2.fromScale(0.5, 0.5)
-	pulseRing.Size = UDim2.fromOffset(90, 90); pulseRing.BackgroundTransparency = 1; pulseRing.Rotation = 45; pulseRing.Parent = st; J:add(pulseRing)
-	local ps = Instance.new("UIStroke"); ps.Color = col; ps.Thickness = 3; ps.Transparency = 0.2; ps.Parent = pulseRing
+
+	-- Sol's RNG Custom-Rendered 8-Point Starburst & Arcane Rune Circle Overlay (Uploaded via Open Cloud)
+	local texStar = Config.VFXTextures and Config.VFXTextures.Starburst
+	local texRune = Config.VFXTextures and Config.VFXTextures.ArcaneRune
+	local starImg = Instance.new("ImageLabel"); starImg.AnchorPoint = Vector2.new(0.5, 0.5); starImg.Position = UDim2.fromScale(0.5, 0.38)
+	starImg.Size = UDim2.fromOffset(40, 40); starImg.BackgroundTransparency = 1; starImg.Image = texStar or ""
+	starImg.ImageColor3 = col; starImg.ImageTransparency = 0.08; starImg.Parent = st; J:add(starImg)
+
+	local runeImg = Instance.new("ImageLabel"); runeImg.AnchorPoint = Vector2.new(0.5, 0.5); runeImg.Position = UDim2.fromScale(0.5, 0.38)
+	runeImg.Size = UDim2.fromOffset(50, 50); runeImg.BackgroundTransparency = 1; runeImg.Image = texRune or ""
+	runeImg.ImageColor3 = col:Lerp(WHITE, 0.45); runeImg.ImageTransparency = 0.15; runeImg.Parent = st; J:add(runeImg)
+
 	local t0 = os.clock()
 	J:conn(RunService.RenderStepped:Connect(function(dt)
 		st.Emblem.Rotation += dt * 175
-		pulseRing.Rotation -= dt * 120
-		local beat = 1 + math.sin((os.clock() - t0) * 14) * 0.12
-		pulseRing.Size = UDim2.fromOffset(180 * beat, 180 * beat)
+		starImg.Rotation += dt * 140
+		runeImg.Rotation -= dt * 95
+		local beat = 1 + math.sin((os.clock() - t0) * 14) * 0.14
+		starImg.Size = UDim2.fromOffset(275 * beat, 275 * beat)
+		runeImg.Size = UDim2.fromOffset(325 * beat, 325 * beat)
 	end))
 end
 local function starReveal(r, col)

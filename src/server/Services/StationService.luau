@@ -38,10 +38,18 @@ local function buildWorld2AndPortals()
 	vortex.Parent = portalModel
 
 	local pl = Instance.new("PointLight"); pl.Color = C(34, 235, 255); pl.Range = 36; pl.Brightness = 3.5; pl.Parent = vortex
-	local em = Instance.new("ParticleEmitter"); em.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	local em = Instance.new("ParticleEmitter"); em.Texture = (Config.VFXTextures and Config.VFXTextures.Starburst) or "rbxasset://textures/particles/sparkles_main.dds"
 	em.Color = ColorSequence.new(C(34, 235, 255), C(210, 110, 255)); em.LightEmission = 1; em.Rate = 38
-	em.Size = NumberSequence.new(0.9, 0); em.Lifetime = NumberRange.new(1.2, 2.4); em.Speed = NumberRange.new(3, 8); em.SpreadAngle = Vector2.new(180, 180)
+	em.Size = NumberSequence.new(1.1, 0); em.Lifetime = NumberRange.new(1.2, 2.4); em.Speed = NumberRange.new(3, 8); em.SpreadAngle = Vector2.new(180, 180)
 	em.Parent = vortex
+
+	-- Sacred Sigil Texture on Portal Vortex & Pedestal
+	if Config.VFXTextures then
+		for _, face in ipairs({ Enum.NormalId.Right, Enum.NormalId.Left }) do
+			local sg = Instance.new("SurfaceGui"); sg.Face = face; sg.LightInfluence = 0; sg.Brightness = 3; sg.Parent = vortex
+			local im = Instance.new("ImageLabel"); im.BackgroundTransparency = 1; im.Size = UDim2.fromScale(1, 1); im.Image = Config.VFXTextures.SacredSigil; im.ImageColor3 = C(34, 235, 255); im.Parent = sg
+		end
+	end
 
 	-- Billboard overhead sign
 	local bb = Instance.new("BillboardGui"); bb.Size = UDim2.fromOffset(320, 74); bb.StudsOffset = Vector3.new(0, 13, 0); bb.AlwaysOnTop = false; bb.MaxDistance = 160; bb.Parent = vortex
@@ -74,6 +82,14 @@ local function buildWorld2AndPortals()
 	innerRing.Anchored = true; innerRing.Material = Enum.Material.Neon; innerRing.Color = C(34, 235, 255)
 	innerRing.Size = Vector3.new(6.3, 62, 62); innerRing.CFrame = CFrame.new(w2Center) * CFrame.Angles(0, 0, math.rad(90))
 	innerRing.Parent = w2
+
+	-- Giant Sacred Sigil on World 2 Floor
+	if Config.VFXTextures then
+		local sigPlate = Instance.new("Part"); sigPlate.Name = "AstralFloorSigil"; sigPlate.Anchored = true; sigPlate.CanCollide = false; sigPlate.Transparency = 1
+		sigPlate.Size = Vector3.new(95, 0.2, 95); sigPlate.CFrame = CFrame.new(w2Center + Vector3.new(0, 3.25, 0)); sigPlate.Parent = w2
+		local sg = Instance.new("SurfaceGui"); sg.Face = Enum.NormalId.Top; sg.LightInfluence = 0; sg.Brightness = 3.5; sg.Parent = sigPlate
+		local im = Instance.new("ImageLabel"); im.BackgroundTransparency = 1; im.Size = UDim2.fromScale(1, 1); im.Image = Config.VFXTextures.SacredSigil; im.ImageColor3 = C(34, 235, 255); im.Parent = sg
+	end
 
 	local w2Spawn = Instance.new("Part"); w2Spawn.Name = "World2Spawn"; w2Spawn.Anchored = true; w2Spawn.CanCollide = false; w2Spawn.Transparency = 1
 	w2Spawn.Size = Vector3.new(8, 1, 8); w2Spawn.CFrame = CFrame.new(w2Center + Vector3.new(0, 5, 45))

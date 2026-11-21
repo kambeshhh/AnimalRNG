@@ -91,14 +91,22 @@ Config.Weather = {
 	},
 }
 
--- Sol's RNG x Anime Dice: 3D Wearable Relics & Gauntlets (orbit around player character with glowing beams & trails)
+-- Custom-rendered VFX Textures uploaded to Roblox Open Cloud + Real 3D AssetLibrary MeshIds
+Config.VFXTextures = {
+	SacredSigil = "rbxassetid://112627895709195", -- 512x512 Sacred Geometry Outer Magic Circle
+	Starburst   = "rbxassetid://128268449855777", -- 512x512 Sol's RNG 8-Pointed Sharp Starburst
+	ArcaneRune  = "rbxassetid://116675359776426", -- 512x512 Inner Arcane Hexagram & Rune Ring
+	Shockwave   = "rbxassetid://110393091506919", -- 512x512 Radial Impact Shockwave Ring
+}
+
+-- Sol's RNG x Anime Dice: 3D Wearable Relics & Gauntlets (orbit around player character with real 3D meshes, glowing beams & trails)
 Config.Relics = {
 	Order = { "SolarGauntlet", "FrostTalisman", "ChronoCrown", "SingularityCore" },
 	Types = {
-		SolarGauntlet   = { Display = "Solar Strike Gauntlet", Slot = "RightArm", Icon = "🥊", Luck = 1.5, Speed = 0.20, Coins = 50000,    Materials = { MagmaHeart = 5 }, Color = C(255, 140, 40), Desc = "+150% Luck & +20% Roll Speed (3D Flaming Solar Orb)" },
-		FrostTalisman   = { Display = "Subzero Talisman",      Slot = "LeftArm",  Icon = "💠", Luck = 3.0, Speed = 0.25, Coins = 250000,   Materials = { FrostCore = 8 }, Color = C(80, 225, 255), Desc = "+300% Luck & +25% Roll Speed (3D Cryo Crystal Shard)" },
-		ChronoCrown     = { Display = "Chrono-Shift Halo",     Slot = "Halo",     Icon = "⏳", Luck = 8.0, Speed = 0.35, Coins = 2000000,  Materials = { FrostCore = 12, MagmaHeart = 12 }, Color = C(70, 255, 190), Desc = "+800% Luck & +35% Roll Speed (3D Temporal Ring)" },
-		SingularityCore = { Display = "Ouroboros Void Core",   Slot = "Back",     Icon = "🕳️", Luck = 25.0, Speed = 0.50, Coins = 15000000, Materials = { EclipseDust = 20, FrostCore = 15, MagmaHeart = 15 }, Color = C(210, 90, 255), Rainbow = true, Desc = "+2,500% Luck & +50% Roll Speed (3D Singularity Black Hole)" },
+		SolarGauntlet   = { Display = "Solar Strike Gauntlet", Slot = "RightArm", Icon = "🥊", Luck = 1.5, Speed = 0.20, Coins = 50000,    Materials = { MagmaHeart = 5 }, Color = C(255, 140, 40), MeshTemplate = "Quartz", Desc = "+150% Luck & +20% Roll Speed (3D Flaming Solar Crystal)" },
+		FrostTalisman   = { Display = "Subzero Talisman",      Slot = "LeftArm",  Icon = "💠", Luck = 3.0, Speed = 0.25, Coins = 250000,   Materials = { FrostCore = 8 }, Color = C(80, 225, 255), MeshTemplate = "CrystalBlue", Desc = "+300% Luck & +25% Roll Speed (3D Cryo Crystal Cluster)" },
+		ChronoCrown     = { Display = "Chrono-Shift Halo",     Slot = "Halo",     Icon = "⏳", Luck = 8.0, Speed = 0.35, Coins = 2000000,  Materials = { FrostCore = 12, MagmaHeart = 12 }, Color = C(70, 255, 190), MeshTemplate = "Lantern", Desc = "+800% Luck & +35% Roll Speed (3D Temporal Sanctum Halo)" },
+		SingularityCore = { Display = "Ouroboros Void Core",   Slot = "Back",     Icon = "🕳️", Luck = 25.0, Speed = 0.50, Coins = 15000000, Materials = { EclipseDust = 20, FrostCore = 15, MagmaHeart = 15 }, Color = C(210, 90, 255), Rainbow = true, MeshTemplate = "Totem", Desc = "+2,500% Luck & +50% Roll Speed (3D Singularity Relic)" },
 	},
 }
 

@@ -176,6 +176,34 @@ local function applyTierSigil(model, item)
 			end
 		end
 	end
+
+	-- Custom-rendered 512x512 Sacred Geometry Magic Circle & Arcane Rune Floor Plates (Uploaded via Open Cloud)
+	if Config.VFXTextures then
+		local plateAtt = Instance.new("Attachment"); plateAtt.Name = "SigilPlateAtt"; plateAtt.Position = Vector3.new(0, floorY + 0.05, 0); plateAtt.Parent = root
+		local plate = Instance.new("Part"); plate.Name = "SigilPlate"; plate.Transparency = 1
+		plate.Anchored = false; plate.CanCollide = false; plate.CanQuery = false; plate.CanTouch = false; plate.Massless = true
+		local plateDia = baseRadius * (1.5 + ringCount * 0.45)
+		plate.Size = Vector3.new(plateDia, 0.1, plateDia)
+		plate.CFrame = root.CFrame * CFrame.new(0, floorY + 0.05, 0)
+		local wc = Instance.new("WeldConstraint"); wc.Part0 = root; wc.Part1 = plate; wc.Parent = plate
+		local sg = Instance.new("SurfaceGui"); sg.Face = Enum.NormalId.Top; sg.LightInfluence = 0; sg.Brightness = 3.2
+		sg.SizingMode = Enum.SurfaceGuiSizingMode.FixedSize; sg.CanvasSize = Vector2.new(512, 512); sg.Parent = plate
+		local img1 = Instance.new("ImageLabel"); img1.Name = "OuterSigil"; img1.BackgroundTransparency = 1
+		img1.Size = UDim2.fromScale(1, 1); img1.AnchorPoint = Vector2.new(0.5, 0.5); img1.Position = UDim2.fromScale(0.5, 0.5)
+		img1.Image = Config.VFXTextures.SacredSigil; img1.ImageColor3 = col; img1.ImageTransparency = 0.1; img1.Parent = sg
+		if tierIdx >= 13 then
+			local img2 = Instance.new("ImageLabel"); img2.Name = "InnerRune"; img2.BackgroundTransparency = 1
+			img2.Size = UDim2.fromScale(0.76, 0.76); img2.AnchorPoint = Vector2.new(0.5, 0.5); img2.Position = UDim2.fromScale(0.5, 0.5)
+			img2.Image = Config.VFXTextures.ArcaneRune; img2.ImageColor3 = col:Lerp(Color3.new(1, 1, 1), 0.45); img2.ImageTransparency = 0.12; img2.Parent = sg
+		end
+		if tierIdx >= 20 then
+			local img3 = Instance.new("ImageLabel"); img3.Name = "CoreStar"; img3.BackgroundTransparency = 1
+			img3.Size = UDim2.fromScale(0.52, 0.52); img3.AnchorPoint = Vector2.new(0.5, 0.5); img3.Position = UDim2.fromScale(0.5, 0.5)
+			img3.Image = Config.VFXTextures.Starburst; img3.ImageColor3 = Color3.new(1, 1, 1); img3.ImageTransparency = 0.18; img3.Parent = sg
+		end
+		plate.Parent = sigilFolder
+	end
+
 	model:SetAttribute("HasSigil", true)
 end
 
@@ -308,27 +336,41 @@ function MorphService.RefreshRelics(player)
 	local eq = data.EquippedRelics
 	if not eq or not next(eq) then return end
 	local folder = Instance.new("Folder"); folder.Name = "EquippedRelics3D"; folder.Parent = char
+	local SS = game:GetService("ServerStorage")
+	local assetLib = SS:FindFirstChild("AssetLibrary")
 	local idx = 0
 	for _, rKey in ipairs(Config.Relics and Config.Relics.Order or {}) do
 		if eq[rKey] then
 			idx += 1
 			local cfg = Config.Relics.Types[rKey]
 			if cfg then
-				local p = Instance.new("Part")
+				local p
+				local tplModel = assetLib and cfg.MeshTemplate and assetLib:FindFirstChild(cfg.MeshTemplate)
+				local tplMesh = tplModel and tplModel:FindFirstChildWhichIsA("MeshPart", true)
+				if tplMesh then
+					p = tplMesh:Clone()
+					local maxSide = math.max(p.Size.X, p.Size.Y, p.Size.Z, 0.01)
+					local targetSide = (cfg.Slot == "Halo" and 2.2) or (cfg.Slot == "Back" and 2.5) or 1.85
+					p.Size = p.Size * (targetSide / maxSide)
+					p.TextureID = ""
+				else
+					p = Instance.new("Part")
+					p.Size = (cfg.Slot == "Halo" and Vector3.new(2.2, 0.45, 2.2)) or (cfg.Slot == "Back" and Vector3.new(1.8, 1.8, 1.8)) or Vector3.new(1.25, 1.25, 1.25)
+					p.Shape = (cfg.Slot == "Back" and Enum.PartType.Ball) or Enum.PartType.Block
+				end
 				p.Name = "Relic_" .. rKey
 				p.Anchored = true; p.CanCollide = false; p.CanQuery = false; p.CanTouch = false; p.Massless = true
 				p.Material = Enum.Material.Neon
 				p.Color = cfg.Color
-				p.Size = (cfg.Slot == "Halo" and Vector3.new(2.2, 0.45, 2.2)) or (cfg.Slot == "Back" and Vector3.new(1.8, 1.8, 1.8)) or Vector3.new(1.25, 1.25, 1.25)
-				p.Shape = (cfg.Slot == "Back" and Enum.PartType.Ball) or Enum.PartType.Block
-				local a0 = Instance.new("Attachment"); a0.Position = Vector3.new(0, 0.5, 0); a0.Parent = p
-				local a1 = Instance.new("Attachment"); a1.Position = Vector3.new(0, -0.5, 0); a1.Parent = p
-				local tr = Instance.new("Trail"); tr.Attachment0 = a0; tr.Attachment1 = a1; tr.Lifetime = 0.35
+				local h = Instance.new("Highlight"); h.FillColor = cfg.Color; h.FillTransparency = 0.35; h.OutlineColor = Color3.new(1, 1, 1); h.Parent = p
+				local a0 = Instance.new("Attachment"); a0.Position = Vector3.new(0, 0.6, 0); a0.Parent = p
+				local a1 = Instance.new("Attachment"); a1.Position = Vector3.new(0, -0.6, 0); a1.Parent = p
+				local tr = Instance.new("Trail"); tr.Attachment0 = a0; tr.Attachment1 = a1; tr.Lifetime = 0.4
 				tr.LightEmission = 1; tr.Color = cfg.Rainbow and RAINBOW or ColorSequence.new(cfg.Color, Color3.new(1, 1, 1))
-				tr.Transparency = NumberSequence.new(0.15, 1); tr.WidthScale = NumberSequence.new(1, 0); tr.Parent = p
-				local em = emitter(p, cfg.Color, 14, 0.5, 2)
+				tr.Transparency = NumberSequence.new(0.1, 1); tr.WidthScale = NumberSequence.new(1, 0); tr.Parent = p
+				local em = emitter(p, cfg.Color, 16, 0.55, 2.2)
 				if cfg.Rainbow then em.Color = RAINBOW end
-				light(p, cfg.Color, 10, 1.8)
+				light(p, cfg.Color, 12, 2.2)
 				p:SetAttribute("RelicIndex", idx)
 				p:SetAttribute("RelicSlot", cfg.Slot)
 				p.CFrame = root.CFrame * CFrame.new(3.5, 2, 0)
