@@ -29,7 +29,12 @@ function Roll.GetLuck(player)
 	local skillLuck = ((data.Skills and data.Skills.SuperLuck) or 0) * Config.Skills.Nodes.SuperLuck.Step
 	local dieCfg = Config.Dice.Types[data.EquippedDie or "Wooden"] or Config.Dice.Types.Wooden
 	local dieBonus = math.max(0, (dieCfg.Luck or 1) - 1)
-	local add = { Base = 1, Rank = (data.Rank - 1) * 0.05, Streak = streakBonus, Skills = skillLuck, Die = dieBonus, Totems = 0, AlphaZone = 0, Potion = 0, Weather = 0, Index = 0 }
+	local relicLuck = 0
+	for rKey, on in pairs(data.EquippedRelics or {}) do
+		local rCfg = on and Config.Relics and Config.Relics.Types[rKey]
+		if rCfg then relicLuck += (rCfg.Luck or 0) end
+	end
+	local add = { Base = 1, Rank = (data.Rank - 1) * 0.05, Streak = streakBonus, Skills = skillLuck, Die = dieBonus, Relics = relicLuck, Totems = 0, AlphaZone = 0, Potion = 0, Weather = 0, Index = 0 }
 	for _, id in ipairs(data.EquippedTotems) do local t = Config.Totems[id]; if t then add.Totems += t.Luck end end
 	if player:GetAttribute("InAlpha") then add.AlphaZone = Config.Luck.AlphaZone end
 	if (data.LuckyUntil or 0) > os.time() then add.Potion = Config.Potions.Lucky.Luck end
@@ -64,6 +69,10 @@ function Roll.GetCooldown(player, quick, multi)
 	if data then
 		local ts = 0
 		for _, id in ipairs(data.EquippedTotems) do local t = Config.Totems[id]; if t then ts += t.Speed end end
+		for rKey, on in pairs(data.EquippedRelics or {}) do
+			local rCfg = on and Config.Relics and Config.Relics.Types[rKey]
+			if rCfg then ts += (rCfg.Speed or 0) end
+		end
 		local skillSpd = ((data.Skills and data.Skills.RollSpeed) or 0) * Config.Skills.Nodes.RollSpeed.Step
 		speed *= 1 + ts + skillSpd
 		if quick and Roll.CanQuick(player) then speed *= Config.Roll.QuickRollSpeedMult end

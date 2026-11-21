@@ -119,6 +119,20 @@ local function flash(alpha, color)
 	fx.Flash.BackgroundColor3 = color or WHITE; fx.Flash.BackgroundTransparency = 1 - alpha
 	tw(fx.Flash, { BackgroundTransparency = 1 }, 0.45)
 end
+local function impactFrame(J, color)
+	fx.Flash.BackgroundColor3 = WHITE; fx.Flash.BackgroundTransparency = 0
+	task.delay(0.055, function()
+		if not J or not J.dead then
+			fx.Flash.BackgroundColor3 = C(6, 4, 16); fx.Flash.BackgroundTransparency = 0.05
+			task.delay(0.055, function()
+				fx.Flash.BackgroundColor3 = color or WHITE; fx.Flash.BackgroundTransparency = 0.1
+				tw(fx.Flash, { BackgroundTransparency = 1 }, 0.55)
+			end)
+		else
+			fx.Flash.BackgroundTransparency = 1
+		end
+	end)
+end
 
 local function ring(J, color, size, t, thick)
 	local f = Instance.new("Frame"); f.AnchorPoint = Vector2.new(0.5, 0.5); f.Position = UDim2.fromScale(0.5, 0.5); f.Size = UDim2.fromOffset(30, 30); f.BackgroundTransparency = 1
@@ -498,7 +512,11 @@ local function runProfile(r, P, J)
 	if P.Build >= 1 then shake(J, (P.Shake or 0) * 0.2, P.Build) end
 	J:wait(P.Build)
 	-- 2) IMPACT
-	flash(P.Flash, col:Lerp(WHITE, 0.5))
+	if r.TierIndex >= 16 then
+		impactFrame(J, col:Lerp(WHITE, 0.5))
+	else
+		flash(P.Flash, col:Lerp(WHITE, 0.5))
+	end
 	riftCollapse(J)
 	for i = 1, P.Rings or 0 do
 		task.delay((i - 1) * 0.12, function() if not J.dead then ring(J, i % 2 == 0 and WHITE or col, 520 + i * 180, 0.55 + i * 0.1, 7 - i) end end)
@@ -574,15 +592,17 @@ local function unattainable(r, J)
 	J:wait(0.9)
 	glitch:Disconnect(); title.Position = basePos; title.TextTransparency = 1; sub.TextTransparency = 1
 	J:wait(0.25)
-	-- D) TRUE CLIMAX
+	-- D) TRUE CLIMAX + WHITEOUT IMPACT FRAME + SUB-BASS DROP
+	impactFrame(J, WHITE)
 	un.Flash.BackgroundTransparency = 0; tw(un.Flash, { BackgroundTransparency = 1 }, 1.4)
 	title.Text = "UNATTAINABLE"; title.TextColor3 = WHITE; title.Rainbow.Enabled = true; title.TextTransparency = 0
 	for _, n in { "GrailLineTop", "GrailLineBottom" } do local ln = un:FindFirstChild(n); if ln then ln.Visible = true; ln.BackgroundTransparency = 1; tw(ln, { BackgroundTransparency = 0 }, 0.6) end end
 	title.Rainbow.Offset = Vector2.new(-1, 0); tw(title.Rainbow, { Offset = Vector2.new(1, 0) }, 4, Enum.EasingStyle.Linear)
 	sub.Text = r.Name .. "  •  " .. AnimalData.FormatRarity(r.Rarity); tw(sub, { TextTransparency = 0 }, 0.6)
-	sfx(J, "Bass", 0.85, 0.5); sfx(J, "Reveal", 0.5, 0.7); sfx(J, "Low", 0.45, 0.5)
-	task.delay(0.18, function() if not J.dead then sfx(J, "Bass", 0.55, 0.72) end end)
-	shake(J, 2, 1.4); zoom(J, 0, 0.6, true); blur(J, 0, 0.25)
+	sfx(J, "Bass", 0.85, 0.42); sfx(J, "Reveal", 0.65, 0.75); sfx(J, "Low", 0.6, 0.5); sfx(J, "Hello", 0.6, 0.95)
+	task.delay(0.14, function() if not J.dead then sfx(J, "Bass", 0.65, 0.68); sfx(J, "Chime", 0.65, 1.25) end end)
+	task.delay(0.32, function() if not J.dead then sfx(J, "Chime", 0.6, 1.5) end end)
+	shake(J, 2.4, 1.5); zoom(J, 0, 0.6, true); blur(J, 0, 0.25)
 	for i = 1, 4 do task.delay((i - 1) * 0.14, function() if not J.dead then ring(J, Color3.fromHSV(i / 4, 0.6, 1), 700 + i * 220, 0.8, 8 - i) end end) end
 	local h = 0
 	J:conn(RunService.RenderStepped:Connect(function(dt) h = (h + dt * 0.25) % 1; if J.cc then J.cc.TintColor = Color3.fromHSV(h, 0.25, 1) end end))

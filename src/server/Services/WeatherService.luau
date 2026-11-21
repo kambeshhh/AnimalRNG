@@ -20,6 +20,12 @@ local PRESETS = {
 		A = { Density = 0.42, Color = C(255, 150, 100), Decay = C(130, 40, 20), Haze = 2 }, CC = { TintColor = C(255, 214, 190), Saturation = 0.3, Brightness = 0 } },
 	Eclipse  = { L = { ClockTime = 20.6, Brightness = 1.2, Ambient = C(80, 50, 120), OutdoorAmbient = C(100, 70, 150) },
 		A = { Density = 0.36, Color = C(130, 90, 190), Decay = C(40, 20, 70), Haze = 1.6 }, CC = { TintColor = C(205, 175, 255), Saturation = 0.15, Brightness = -0.03 } },
+	Starfall = { L = { ClockTime = 23.2, Brightness = 1.8, Ambient = C(45, 70, 145), OutdoorAmbient = C(70, 115, 220) },
+		A = { Density = 0.32, Color = C(60, 170, 255), Decay = C(25, 30, 95), Haze = 1.8 }, CC = { TintColor = C(185, 225, 255), Saturation = 0.25, Brightness = 0.02 } },
+	BloodEclipse = { L = { ClockTime = 20.2, Brightness = 1.4, Ambient = C(110, 24, 34), OutdoorAmbient = C(145, 35, 50) },
+		A = { Density = 0.46, Color = C(210, 40, 60), Decay = C(65, 10, 20), Haze = 2.2 }, CC = { TintColor = C(255, 165, 175), Saturation = 0.35, Brightness = -0.02 } },
+	Aurora   = { L = { ClockTime = 22.0, Brightness = 2.0, Ambient = C(55, 115, 110), OutdoorAmbient = C(85, 175, 160) },
+		A = { Density = 0.34, Color = C(90, 255, 195), Decay = C(45, 70, 130), Haze = 1.7 }, CC = { TintColor = C(210, 255, 240), Saturation = 0.22, Brightness = 0.03 } },
 }
 
 function Weather.Init(services) S = services end
@@ -38,16 +44,21 @@ end
 local function tween(obj, props, t) TweenService:Create(obj, TweenInfo.new(t or 5, Enum.EasingStyle.Sine), props):Play() end
 
 local function applyLook(name, t)
-	local p = PRESETS[name]
+	local p = PRESETS[name] or PRESETS.Sunny
 	tween(Lighting, p.L, t)
 	local atm = Lighting:FindFirstChildOfClass("Atmosphere"); if atm then tween(atm, p.A, t) end
 	local cc = Lighting:FindFirstChildOfClass("ColorCorrectionEffect"); if cc then tween(cc, p.CC, t) end
-	local fx = workspace.Hub.WeatherFX
-	fx.Snow.FX.Enabled = name == "Blizzard"
-	fx.Ash.FX.Enabled = name == "Volcanic"
-	fx.Stardust.FX.Enabled = name == "Eclipse"
-	for _, part in ipairs(fx.EclipseRing:GetChildren()) do
-		tween(part, { Transparency = (name == "Eclipse") and (part.Name == "Disc" and 0 or 0.1) or 1 }, t)
+	local fx = workspace:FindFirstChild("Hub") and workspace.Hub:FindFirstChild("WeatherFX")
+	if fx then
+		if fx:FindFirstChild("Snow") then fx.Snow.FX.Enabled = (name == "Blizzard" or name == "Aurora") end
+		if fx:FindFirstChild("Ash") then fx.Ash.FX.Enabled = (name == "Volcanic" or name == "BloodEclipse") end
+		if fx:FindFirstChild("Stardust") then fx.Stardust.FX.Enabled = (name == "Eclipse" or name == "Starfall" or name == "Aurora") end
+		if fx:FindFirstChild("EclipseRing") then
+			for _, part in ipairs(fx.EclipseRing:GetChildren()) do
+				local showRing = (name == "Eclipse" or name == "BloodEclipse" or name == "Starfall")
+				tween(part, { Transparency = showRing and (part.Name == "Disc" and 0 or 0.1) or 1 }, t)
+			end
+		end
 	end
 end
 

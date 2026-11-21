@@ -67,9 +67,7 @@ local function validateCombo(args)
 	local tier = num(args.Tier, 1, AnimalData.TierCount); if not tier then return nil, "Bad tier" end
 	tier = math.floor(tier)
 	local mutation = typeof(args.Mutation) == "string" and AnimalData.Mutations[args.Mutation] and args.Mutation or "Normal"
-	-- strict Unattainable exclusivity, even for admins
-	if animal == AnimalData.UnattainableCreature then tier = AnimalData.TierCount
-	elseif tier >= AnimalData.TierCount then return nil, "Tier 28 is Ouroboros-only" end
+	if animal == AnimalData.UnattainableCreature then tier = AnimalData.TierCount end
 	return { Animal = animal, Tier = tier, Mutation = mutation }
 end
 DEV.Grant = function(player, args)

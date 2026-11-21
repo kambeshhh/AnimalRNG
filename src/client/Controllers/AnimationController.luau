@@ -143,6 +143,22 @@ task.spawn(function()
 						end
 					end
 				end
+				-- Sol's RNG x Anime Dice: 3D Wearable Relics & Gauntlets orbiting the character
+				local relics = c:FindFirstChild("EquippedRelics3D")
+				if relics then
+					local items = relics:GetChildren()
+					local n = #items
+					for i, rel in ipairs(items) do
+						if rel:IsA("BasePart") then
+							local slot = rel:GetAttribute("RelicSlot")
+							local ang = t * 1.85 + (i - 1) / math.max(1, n) * math.pi * 2
+							local rad = (slot == "Halo" and 0.1) or 4.2
+							local h = (slot == "Halo" and 5.2) or (1.5 + math.sin(t * 3 + i) * 0.9)
+							local offset = Vector3.new(math.cos(ang) * rad, h, math.sin(ang) * rad)
+							rel.CFrame = CFrame.new(root.Position + offset) * CFrame.Angles(t * 2.2, t * 1.7, t * 0.9)
+						end
+					end
+				end
 			end
 		end
 	end)

@@ -26,7 +26,9 @@ local function default()
 		Vault = {}, Settings = { CutsceneMin = 4, ReduceOthersFX = false }, LuckBoostUntil = 0, Purchases = {}, StudioPasses = {},
 		-- Fusion systems: Anime Dice ladder, Slime RNG Rebirth & Skill Tree, Active Companion Pack, Promo Codes & Lucky Spins
 		Dice = { Wooden = true }, EquippedDie = "Wooden",
-		Rebirth = 0,
+		Relics = {}, EquippedRelics = {},
+		Rebirth = 0, World2Unlocked = false,
+		InfinitePaidLuck = 0,
 		Skills = { CoinYield = 0, RollSpeed = 0, SuperLuck = 0, OfflineCap = 0, BonusCycle = 0 },
 		Pack = {}, -- up to 3 companion item Ids
 		LuckySpins = 1, LuckySpinArmed = false,
@@ -189,6 +191,8 @@ function DataService.Sync(player)
 		Passes = S.MonetizationService and S.MonetizationService.OwnedPasses(player) or {},
 		PaidRandomRestricted = S.MonetizationService and S.MonetizationService.IsPaidRandomRestricted(player) or false,
 		Dice = d.Dice, EquippedDie = d.EquippedDie, Rebirth = d.Rebirth, Skills = d.Skills,
+		Relics = d.Relics, EquippedRelics = d.EquippedRelics, World2Unlocked = d.World2Unlocked,
+		InfinitePaidLuck = d.InfinitePaidLuck or 0,
 		Pack = d.Pack, PackCPS = DataService.PackCPS(d), CoinMult = DataService.CoinMult(d),
 		LuckySpins = d.LuckySpins, LuckySpinArmed = d.LuckySpinArmed, RedeemedCodes = d.RedeemedCodes,
 		OfflineCoinsPending = d.OfflineCoinsPending,

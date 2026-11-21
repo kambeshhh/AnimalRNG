@@ -73,6 +73,12 @@ local ouroCode = Config.Codes["OUROBOROS"]
 local slimeCode = Config.Codes["SLIMEDICE"]
 assertTest("Promo Codes Active", ouroCode ~= nil and slimeCode ~= nil, "Codes missing")
 
+-- Test 11: 3D Wearable Relics & Gauntlets
+assertTest("3D Wearable Relics Configured", Config.Relics ~= nil and #Config.Relics.Order == 4, "Relics missing")
+
+-- Test 12: Expanded Biome Events (Starfall, BloodEclipse, Aurora)
+assertTest("Expanded Biome Events Configured", Config.Weather.Types.Starfall ~= nil and Config.Weather.Types.BloodEclipse ~= nil and Config.Weather.Types.Aurora ~= nil, "Biome events missing")
+
 print("==================================================")
 if failed == 0 then
 	print(string.format("🎉 ALL %d DIAGNOSTIC TESTS PASSED! Game systems are 100%% operational!", passed))

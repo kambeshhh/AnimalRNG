@@ -56,7 +56,7 @@ Config.Luck = {
 	StreakPer100 = 0.02,       -- +2% per 100 unlucky rolls without Epic+ (free, unsellable)
 	StreakCap = 0.50,          -- stacks up to +50%
 	StreakResetTier = 5,       -- Tier 5 (Epic) or better
-	Weather = { Sunny = 0, Blizzard = 0.25, Volcanic = 0.25, Eclipse = 0.5 },
+	Weather = { Sunny = 0, Blizzard = 0.25, Volcanic = 0.25, Eclipse = 0.5, Starfall = 1.0, BloodEclipse = 0.75, Aurora = 0.5 },
 	MutationLuckExponent = 0.5,-- mutations scale with sqrt(luck)
 }
 
@@ -76,15 +76,29 @@ Config.Materials = {
 Config.MaterialOrder = { "FrostCore", "MagmaHeart", "EclipseDust" }
 
 Config.Weather = {
-	MinDuration = 600, MaxDuration = 720, -- 10-12 minutes
+	MinDuration = 480, MaxDuration = 600, -- 8-10 minutes
 	EclipseChance = 0.15,
-	PickupInterval = 15, MaxPickups = 12,
-	Order = { "Sunny", "Blizzard", "Volcanic" },
+	PickupInterval = 12, MaxPickups = 14,
+	Order = { "Sunny", "Blizzard", "Volcanic", "Starfall", "BloodEclipse", "Aurora" },
 	Types = {
-		Sunny    = { Display = "Starlit Twilight", Icon = "🌙", Boost = {},                         Material = nil },
-		Blizzard = { Display = "Blizzard",         Icon = "❄️", Boost = { FrostbiteWolf = 3 },      Material = "FrostCore" },
-		Volcanic = { Display = "Volcanic Eruption",Icon = "🌋", Boost = { MagmaGrizzly = 3 },       Material = "MagmaHeart" },
-		Eclipse  = { Display = "Solar Eclipse",    Icon = "🌑", Boost = { SolarEclipseDragon = 5 }, Material = "EclipseDust" },
+		Sunny        = { Display = "Starlit Twilight",  Icon = "🌙", Boost = {},                         Material = nil },
+		Blizzard     = { Display = "Blizzard",          Icon = "❄️", Boost = { FrostbiteWolf = 3 },      Material = "FrostCore" },
+		Volcanic     = { Display = "Volcanic Eruption", Icon = "🌋", Boost = { MagmaGrizzly = 3 },       Material = "MagmaHeart" },
+		Eclipse      = { Display = "Solar Eclipse",     Icon = "🌑", Boost = { SolarEclipseDragon = 5 }, Material = "EclipseDust" },
+		Starfall     = { Display = "Cosmic Starfall",   Icon = "🌠", Boost = { VoidStag = 4, CelestialUnicorn = 4 }, Material = "EclipseDust" },
+		BloodEclipse = { Display = "Blood Eclipse",     Icon = "🩸", Boost = { LavaSalamander = 4, Phoenix = 4 },    Material = "MagmaHeart" },
+		Aurora       = { Display = "Aurora Borealis",   Icon = "🌈", Boost = { FrostDrake = 4, GiantPanda = 3 },     Material = "FrostCore" },
+	},
+}
+
+-- Sol's RNG x Anime Dice: 3D Wearable Relics & Gauntlets (orbit around player character with glowing beams & trails)
+Config.Relics = {
+	Order = { "SolarGauntlet", "FrostTalisman", "ChronoCrown", "SingularityCore" },
+	Types = {
+		SolarGauntlet   = { Display = "Solar Strike Gauntlet", Slot = "RightArm", Icon = "🥊", Luck = 1.5, Speed = 0.20, Coins = 50000,    Materials = { MagmaHeart = 5 }, Color = C(255, 140, 40), Desc = "+150% Luck & +20% Roll Speed (3D Flaming Solar Orb)" },
+		FrostTalisman   = { Display = "Subzero Talisman",      Slot = "LeftArm",  Icon = "💠", Luck = 3.0, Speed = 0.25, Coins = 250000,   Materials = { FrostCore = 8 }, Color = C(80, 225, 255), Desc = "+300% Luck & +25% Roll Speed (3D Cryo Crystal Shard)" },
+		ChronoCrown     = { Display = "Chrono-Shift Halo",     Slot = "Halo",     Icon = "⏳", Luck = 8.0, Speed = 0.35, Coins = 2000000,  Materials = { FrostCore = 12, MagmaHeart = 12 }, Color = C(70, 255, 190), Desc = "+800% Luck & +35% Roll Speed (3D Temporal Ring)" },
+		SingularityCore = { Display = "Ouroboros Void Core",   Slot = "Back",     Icon = "🕳️", Luck = 25.0, Speed = 0.50, Coins = 15000000, Materials = { EclipseDust = 20, FrostCore = 15, MagmaHeart = 15 }, Color = C(210, 90, 255), Rainbow = true, Desc = "+2,500% Luck & +50% Roll Speed (3D Singularity Black Hole)" },
 	},
 }
 

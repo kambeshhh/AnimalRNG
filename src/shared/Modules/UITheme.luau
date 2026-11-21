@@ -4,11 +4,11 @@ local C = Color3.fromRGB
 local T = {}
 
 T.Colors = {
-	Obsidian = C(14, 18, 32), Panel = C(28, 38, 62), Card = C(38, 50, 82), CardHi = C(50, 66, 104),
-	Outline = C(8, 10, 20), BorderInner = C(8, 10, 20), BorderStrong = C(70, 86, 130),
-	Text = C(255, 255, 255), TextSecondary = C(196, 206, 232), TextMuted = C(140, 152, 186),
-	Cyan = C(40, 210, 255), Gold = C(255, 200, 40), Magenta = C(255, 79, 216), Vip = C(181, 110, 255),
-	Green = C(70, 220, 60), Success = C(70, 220, 60), Warn = C(255, 170, 30), Danger = C(235, 45, 55),
+	Obsidian = C(10, 12, 24), Panel = C(20, 26, 48), Card = C(30, 40, 72), CardHi = C(44, 60, 102),
+	Outline = C(6, 8, 18), BorderInner = C(12, 16, 32), BorderStrong = C(80, 110, 175),
+	Text = C(255, 255, 255), TextSecondary = C(210, 222, 248), TextMuted = C(148, 162, 198),
+	Cyan = C(34, 235, 255), Gold = C(255, 210, 45), Magenta = C(255, 65, 220), Vip = C(190, 115, 255),
+	Green = C(65, 235, 95), Success = C(65, 235, 95), Warn = C(255, 178, 36), Danger = C(245, 50, 65),
 }
 local K = T.Colors
 
@@ -16,10 +16,14 @@ local FRED = Font.new("rbxasset://fonts/families/FredokaOne.json", Enum.FontWeig
 local MONT = "rbxasset://fonts/families/Montserrat.json"
 T.Fonts = { Black = FRED, Bold = FRED, SemiBold = FRED, Medium = Font.new(MONT, Enum.FontWeight.Bold), Input = Font.new(MONT, Enum.FontWeight.SemiBold) }
 
-T.GlassFill = ColorSequence.new(C(44, 58, 94), C(28, 38, 62))
-T.TileFill = ColorSequence.new(C(60, 76, 118), C(36, 48, 80))
+T.GlassFill = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, C(48, 64, 112)),
+	ColorSequenceKeypoint.new(0.5, C(28, 38, 70)),
+	ColorSequenceKeypoint.new(1, C(16, 22, 44)),
+})
+T.TileFill = ColorSequence.new(C(66, 86, 138), C(34, 46, 82))
 T.GrailGradient = ColorSequence.new({
-	ColorSequenceKeypoint.new(0, C(255, 213, 74)), ColorSequenceKeypoint.new(0.5, K.Cyan), ColorSequenceKeypoint.new(1, K.Magenta),
+	ColorSequenceKeypoint.new(0, C(255, 218, 70)), ColorSequenceKeypoint.new(0.5, K.Cyan), ColorSequenceKeypoint.new(1, K.Magenta),
 })
 
 local function close(a, b) return math.abs(a.R - b.R) + math.abs(a.G - b.G) + math.abs(a.B - b.B) < 0.06 end

@@ -95,6 +95,39 @@ function Prog.Start()
 		S.DataService.Sync(player)
 	end
 
+	-- Sol's RNG x Anime Dice: 3D Wearable Relics & Gauntlets
+	A.CraftRelic = function(player, relicKey)
+		if typeof(relicKey) ~= "string" then return end
+		local cfg = Config.Relics and Config.Relics.Types[relicKey]; if not cfg then return end
+		local data = S.DataService.Get(player); if not data then return end
+		data.Relics = data.Relics or {}
+		data.EquippedRelics = data.EquippedRelics or {}
+		if data.Relics[relicKey] then
+			data.EquippedRelics[relicKey] = not data.EquippedRelics[relicKey] or nil
+			if S.MorphService and S.MorphService.RefreshRelics then S.MorphService.RefreshRelics(player) end
+			S.DataService.Toast(player, string.format("%s %s %s!", cfg.Icon, cfg.Display, data.EquippedRelics[relicKey] and "EQUIPPED" or "UNEQUIPPED"), cfg.Color)
+			S.DataService.Sync(player)
+			return
+		end
+		if data.Coins < (cfg.Coins or 0) then
+			S.DataService.Toast(player, "Need " .. AnimalData.Comma(cfg.Coins) .. " Coins for " .. cfg.Display .. "."); return
+		end
+		for mat, req in pairs(cfg.Materials or {}) do
+			if (data.Materials[mat] or 0) < req then
+				S.DataService.Toast(player, "Need " .. req .. " " .. Config.Materials[mat].Display .. " for " .. cfg.Display .. "."); return
+			end
+		end
+		data.Coins -= (cfg.Coins or 0)
+		for mat, req in pairs(cfg.Materials or {}) do data.Materials[mat] -= req end
+		data.Relics[relicKey] = true
+		data.EquippedRelics[relicKey] = true
+		data.Stats.Crafts = (data.Stats.Crafts or 0) + 1
+		if S.MorphService and S.MorphService.RefreshRelics then S.MorphService.RefreshRelics(player) end
+		S.DataService.Notify(player, "Banner", { Text = string.format("%s FORGED & EQUIPPED %s (+%d%% LUCK)!", cfg.Icon, cfg.Display:upper(), math.floor(cfg.Luck * 100)), Color = cfg.Color })
+		S.DataService.Notify(player, "PowerUpFX", { Kind = "Die", Color = cfg.Color })
+		S.DataService.Sync(player)
+	end
+
 	-- Slime RNG: Essence Rebirth (spends Coins & Essence, resets Coins only; keeps ALL Animals, Index, Dice, Totems, Skills & Passes)
 	A.Rebirth = function(player)
 		local data = S.DataService.Get(player); if not data then return end

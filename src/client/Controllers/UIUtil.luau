@@ -27,18 +27,21 @@ function UI.Juice(btn)
 	if btn:GetAttribute("Juiced") then return end
 	btn:SetAttribute("Juiced", true)
 	local sc = btn:FindFirstChildOfClass("UIScale") or Instance.new("UIScale", btn)
-	btn.MouseEnter:Connect(function() UI.Tween(sc, { Scale = 1.06 }, 0.12) end)
-	btn.MouseLeave:Connect(function() UI.Tween(sc, { Scale = 1 }, 0.12) end)
-	btn.MouseButton1Down:Connect(function() UI.Tween(sc, { Scale = 0.94 }, 0.06) end)
-	btn.MouseButton1Up:Connect(function() UI.Tween(sc, { Scale = 1.06 }, 0.1, Enum.EasingStyle.Back) end)
-	btn.Activated:Connect(function() UI.Sound("Click", 0.45, 1) end)
+	btn.MouseEnter:Connect(function()
+		UI.Tween(sc, { Scale = 1.08 }, 0.14, Enum.EasingStyle.Back)
+		UI.Sound("Tick", 0.22, 1.35)
+	end)
+	btn.MouseLeave:Connect(function() UI.Tween(sc, { Scale = 1 }, 0.14) end)
+	btn.MouseButton1Down:Connect(function() UI.Tween(sc, { Scale = 0.91 }, 0.05) end)
+	btn.MouseButton1Up:Connect(function() UI.Tween(sc, { Scale = 1.08 }, 0.12, Enum.EasingStyle.Back) end)
+	btn.Activated:Connect(function() UI.Sound("Click", 0.5, 1.05) end)
 end
 
 function UI.JuiceAll(root)
 	for _, d in ipairs(root:GetDescendants()) do if d:IsA("GuiButton") and d:GetAttribute("Juicy") then UI.Juice(d) end end
 end
 
-UI.Display = Enum.Font.FredokaOne -- remapped to Montserrat Black by UITheme
+UI.Display = Enum.Font.FredokaOne -- remapped to Fredoka/Montserrat Black by UITheme
 function UI.Glass(f, radius, colA, colB)
 	f.BackgroundColor3 = Color3.new(1, 1, 1); f.BackgroundTransparency = 0.04; f.BorderSizePixel = 0
 	local fill = Instance.new("UIGradient"); fill.Name = "Fill"; fill.Rotation = 90
@@ -47,6 +50,28 @@ function UI.Glass(f, radius, colA, colB)
 	local s = Instance.new("UIStroke"); s.Name = "Stroke"; s.Thickness = 3; s.Transparency = 0; s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border; s.Color = colA and Color3.new(1, 1, 1) or Theme.Colors.BorderInner; s.Parent = f
 	if colA then local g = Instance.new("UIGradient"); g.Color = ColorSequence.new(colA, colB or colA); g.Rotation = 35; g.Parent = s end
 	return f
+end
+
+function UI.FoilShimmer(card, color)
+	card.ClipsDescendants = true
+	local sh = Instance.new("Frame"); sh.Name = "FoilGleam"; sh.BackgroundColor3 = color or Color3.new(1, 1, 1)
+	sh.BorderSizePixel = 0; sh.Size = UDim2.new(0.35, 0, 1.8, 0); sh.AnchorPoint = Vector2.new(0.5, 0.5)
+	sh.Position = UDim2.fromScale(-0.4, 0.5); sh.Rotation = 24; sh.BackgroundTransparency = 0.35; sh.ZIndex = card.ZIndex + 3
+	local g = Instance.new("UIGradient")
+	g.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1),
+		NumberSequenceKeypoint.new(0.5, 0.35),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	g.Parent = sh; sh.Parent = card
+	task.spawn(function()
+		task.wait(math.random() * 2.5)
+		while sh.Parent and card.Parent do
+			sh.Position = UDim2.fromScale(-0.4, 0.5)
+			UI.Tween(sh, { Position = UDim2.fromScale(1.4, 0.5) }, 1.15, Enum.EasingStyle.Sine)
+			task.wait(3.2 + math.random() * 1.5)
+		end
+	end)
 end
 
 function UI.Label(parent, text, size, pos, tsize, color, font, props)

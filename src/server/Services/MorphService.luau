@@ -181,7 +181,9 @@ end
 
 local function applyMutation(model, item)
 	local cfg = AnimalData.Animals[item.Animal]
-	if cfg and cfg.ShowcaseScale then applyShowcase(model, cfg.ShowcaseScale) end
+	local tierIdx = AnimalData.ItemTierIndex(item)
+	local scale = (cfg and cfg.ShowcaseScale) or (tierIdx >= 28 and 2.5) or (tierIdx >= 25 and 1.85) or nil
+	if scale then applyShowcase(model, scale) end
 	applyTierSigil(model, item)
 	local mesh, root = model:FindFirstChild("AnimalMesh"), model.PrimaryPart
 	local fx = MUTATION_FX[item.Mutation or "Normal"]
@@ -296,6 +298,46 @@ function MorphService.RefreshPack(player)
 	end
 end
 
+function MorphService.RefreshRelics(player)
+	local char = player.Character
+	local root = char and char.PrimaryPart
+	local data = S.DataService.Get(player)
+	if not char or not root or not data then return end
+	local old = char:FindFirstChild("EquippedRelics3D")
+	if old then old:Destroy() end
+	local eq = data.EquippedRelics
+	if not eq or not next(eq) then return end
+	local folder = Instance.new("Folder"); folder.Name = "EquippedRelics3D"; folder.Parent = char
+	local idx = 0
+	for _, rKey in ipairs(Config.Relics and Config.Relics.Order or {}) do
+		if eq[rKey] then
+			idx += 1
+			local cfg = Config.Relics.Types[rKey]
+			if cfg then
+				local p = Instance.new("Part")
+				p.Name = "Relic_" .. rKey
+				p.Anchored = true; p.CanCollide = false; p.CanQuery = false; p.CanTouch = false; p.Massless = true
+				p.Material = Enum.Material.Neon
+				p.Color = cfg.Color
+				p.Size = (cfg.Slot == "Halo" and Vector3.new(2.2, 0.45, 2.2)) or (cfg.Slot == "Back" and Vector3.new(1.8, 1.8, 1.8)) or Vector3.new(1.25, 1.25, 1.25)
+				p.Shape = (cfg.Slot == "Back" and Enum.PartType.Ball) or Enum.PartType.Block
+				local a0 = Instance.new("Attachment"); a0.Position = Vector3.new(0, 0.5, 0); a0.Parent = p
+				local a1 = Instance.new("Attachment"); a1.Position = Vector3.new(0, -0.5, 0); a1.Parent = p
+				local tr = Instance.new("Trail"); tr.Attachment0 = a0; tr.Attachment1 = a1; tr.Lifetime = 0.35
+				tr.LightEmission = 1; tr.Color = cfg.Rainbow and RAINBOW or ColorSequence.new(cfg.Color, Color3.new(1, 1, 1))
+				tr.Transparency = NumberSequence.new(0.15, 1); tr.WidthScale = NumberSequence.new(1, 0); tr.Parent = p
+				local em = emitter(p, cfg.Color, 14, 0.5, 2)
+				if cfg.Rainbow then em.Color = RAINBOW end
+				light(p, cfg.Color, 10, 1.8)
+				p:SetAttribute("RelicIndex", idx)
+				p:SetAttribute("RelicSlot", cfg.Slot)
+				p.CFrame = root.CFrame * CFrame.new(3.5, 2, 0)
+				p.Parent = folder
+			end
+		end
+	end
+end
+
 function MorphService.SetElixirAura(player, on)
 	local char = player.Character
 	local root = char and char.PrimaryPart
@@ -331,7 +373,7 @@ function MorphService.Spawn(player, keepPosition)
 	model.Name = player.Name
 	local cfg = AnimalData.Animals[item.Animal]
 	local hum = model:FindFirstChildOfClass("Humanoid")
-	local showcase = cfg.ShowcaseScale ~= nil
+	local showcase = cfg.ShowcaseScale ~= nil or (item.Tier or 1) >= 25
 	hum.WalkSpeed = cfg.WalkSpeed
 	hum.UseJumpPower = true; hum.JumpPower = showcase and 75 or 55
 	model:SetAttribute("Animal", item.Animal); model:SetAttribute("Titan", showcase); model:SetAttribute("Mutation", item.Mutation); model:SetAttribute("Tier", item.Tier)
@@ -351,6 +393,7 @@ function MorphService.Spawn(player, keepPosition)
 	pcall(function() model.PrimaryPart:SetNetworkOwner(player) end)
 	makeTag(player, model, item)
 	MorphService.RefreshPack(player)
+	MorphService.RefreshRelics(player)
 	local data = S.DataService.Get(player)
 	if data and data.ElixirArmed then MorphService.SetElixirAura(player, true) end
 	hum.Died:Connect(function()
