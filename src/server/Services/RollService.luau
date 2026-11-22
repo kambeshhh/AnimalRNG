@@ -107,12 +107,13 @@ local function doRoll(player, data, luck, extra, force)
 		end
 	end
 	local newIndex = S.ProgressionService.AddIndex(data, roll)
-	local status, item, coins = S.DataService.AddRolled(player, roll)
+	local isNew = #newIndex > 0
+	local status, item, coins, essence = S.DataService.AddRolled(player, roll, isNew)
 	local rarity = AnimalData.ItemRarity(item)
 	if rarity > data.Stats.RarestPull then data.Stats.RarestPull = rarity; data.Stats.RarestName = AnimalData.ItemName(item) end
 	local tier = AnimalData.TierFor(item)
 	return { Item = item, Name = AnimalData.ItemName(item), Rarity = rarity, Tier = tier.Name, TierIndex = item.Tier,
-		Mutation = item.Mutation, Status = status, Coins = coins, NewIndex = #newIndex > 0, Luck = rollLuck, Bonus = bonus,
+		Mutation = item.Mutation, Status = status, Coins = coins, Essence = essence or 0, NewIndex = isNew, Luck = rollLuck, Bonus = bonus,
 		Die = data.EquippedDie or "Wooden" }
 end
 

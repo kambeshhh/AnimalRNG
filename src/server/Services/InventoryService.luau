@@ -124,11 +124,63 @@ function Inv.Start()
 		S.DataService.Toast(player, "Sold " .. AnimalData.ItemName(item) .. " for " .. AnimalData.Comma(coins) .. " Coins", Config.UI.Gold)
 		S.DataService.Sync(player)
 	end
-	A.SetSetting = function(player, key, value)
+	A.SellDupes = function(player)
 		local data = S.DataService.Get(player)
-		if key == "CutsceneMin" and typeof(value) == "number" and table.find(Config.Cutscene.Options, value) then data.Settings.CutsceneMin = value
-		elseif key == "ReduceOthersFX" and typeof(value) == "boolean" then data.Settings.ReduceOthersFX = value
-		else return end
+		if not data or #data.Inventory <= 1 then
+			S.DataService.Toast(player, "No unlocked duplicate animals to sell.")
+			return
+		end
+		-- Keep the highest-rarity copy of each Animal species; sell all other unlocked, unequipped copies
+		local bestBySpecies = {}
+		for _, it in ipairs(data.Inventory) do
+			local r = AnimalData.ItemRarity(it)
+			local curBest = bestBySpecies[it.Animal]
+			if not curBest or r > curBest.r or it.Id == data.Equipped then
+				bestBySpecies[it.Animal] = { id = it.Id, r = (it.Id == data.Equipped) and math.huge or r }
+			end
+		end
+		local toSell = {}
+		for _, it in ipairs(data.Inventory) do
+			local best = bestBySpecies[it.Animal]
+			if best and it.Id ~= best.id and not it.Locked and it.Id ~= data.Equipped then
+				table.insert(toSell, it.Id)
+			end
+		end
+		if #toSell == 0 then
+			S.DataService.Toast(player, "No unlocked duplicate animals found!")
+			return
+		end
+		local total, n = 0, 0
+		for _, id in ipairs(toSell) do
+			local item = S.DataService.FindItem(data, id)
+			if item then
+				local c = sellItem(player, data, item)
+				if c > 0 then total += c; n += 1 end
+			end
+		end
+		if n > 0 then
+			S.DataService.AutoFillPack(data)
+			if S.MorphService.RefreshPack then S.MorphService.RefreshPack(player) end
+			S.DataService.Toast(player, string.format("💰 Sold %d duplicate%s for %s Coins!", n, n == 1 and "" or "s", AnimalData.Comma(total)), Config.UI.Gold)
+		end
+		S.DataService.Sync(player)
+	end
+	A.SetSetting = function(player, key, value)
+		local data = S.DataService.Get(player); if not data then return end
+		data.Settings = data.Settings or {}
+		if key == "CutsceneMin" and typeof(value) == "number" and table.find(Config.Cutscene.Options, value) then
+			data.Settings.CutsceneMin = value
+		elseif key == "ReduceOthersFX" and typeof(value) == "boolean" then
+			data.Settings.ReduceOthersFX = value
+		elseif key == "AutoFilterTier" and typeof(value) == "number" and (value == 0 or (value >= 2 and value <= 16)) then
+			data.Settings.AutoFilterTier = value
+		elseif key == "AutoEquipRarer" and typeof(value) == "boolean" then
+			data.Settings.AutoEquipRarer = value
+		elseif key == "AlwaysCutsceneNew" and typeof(value) == "boolean" then
+			data.Settings.AlwaysCutsceneNew = value
+		else
+			return
+		end
 		S.DataService.Sync(player)
 	end
 	A.SyncRequest = function(player) S.DataService.Sync(player) end

@@ -156,23 +156,24 @@ render.Inventory = function(p, data)
 	end
 	local slotCost = Config.Inventory.SlotCosts[data.Slots - Config.Inventory.StartSlots + 1]
 	local buttons = {}
-	table.insert(buttons, { "⚡ Equip Best Pack", C(240, 175, 40), function() act("EquipBest") end, W = 185 })
+	table.insert(buttons, { "⚡ Equip Best", C(220, 165, 42), function() act("EquipBest") end, W = 150 })
+	table.insert(buttons, { "💰 Sell Dupes", C(45, 165, 105), function() act("SellDupes") end, W = 145 })
 	if offlinePending > 0 then
-		table.insert(buttons, { "💤 Claim +" .. NF.Short(offlinePending) .. "💰", C(60, 200, 110), function() act("ClaimOffline") end, W = 175 })
+		table.insert(buttons, { "💤 Claim +" .. NF.Short(offlinePending) .. "💰", C(60, 200, 110), function() act("ClaimOffline") end, W = 165 })
 	end
 	if vitem then
-		table.insert(buttons, { "Claim to Inv", C(60, 170, 110), function() act("ClaimVault", vitem.Id) end, W = 150 })
-		table.insert(buttons, { "Sell (" .. NF.Short(Config.SellValue(itemRarity(vitem))) .. ")", C(200, 90, 70), function() act("SellVault", vitem.Id) end, W = 135 })
+		table.insert(buttons, { "Claim to Inv", C(60, 170, 110), function() act("ClaimVault", vitem.Id) end, W = 140 })
+		table.insert(buttons, { "Sell (" .. NF.Short(Config.SellValue(itemRarity(vitem))) .. ")", C(190, 75, 65), function() act("SellVault", vitem.Id) end, W = 130 })
 	elseif it then
-		table.insert(buttons, { "Morph", C(70, 130, 255), function() act("Equip", it.Id) end, W = 110, Disabled = it.Id == data.Equipped })
+		table.insert(buttons, { "Morph", C(65, 125, 235), function() act("Equip", it.Id) end, W = 105, Disabled = it.Id == data.Equipped })
 		if it.Id ~= data.Equipped then
 			local inPack = table.find(pack, it.Id) ~= nil
-			table.insert(buttons, { inPack and "🐾 Remove" or "🐾 Add Pack", C(130, 90, 220), function() act("TogglePack", it.Id) end, W = 135 })
+			table.insert(buttons, { inPack and "🐾 Remove" or "🐾 Pack", C(120, 85, 210), function() act("TogglePack", it.Id) end, W = 120 })
 		end
-		table.insert(buttons, { it.Locked and "Unlock" or "Lock", C(90, 90, 130), function() act("Lock", it.Id) end, W = 100 })
-		table.insert(buttons, { "Sell (" .. NF.Short(Config.SellValue(itemRarity(it))) .. ")", C(200, 90, 70), function() act("Sell", it.Id) end, W = 130, Disabled = it.Locked or it.Id == data.Equipped })
+		table.insert(buttons, { it.Locked and "Unlock" or "Lock", C(75, 82, 112), function() act("Lock", it.Id) end, W = 95 })
+		table.insert(buttons, { "Sell (" .. NF.Short(Config.SellValue(itemRarity(it))) .. ")", C(190, 75, 65), function() act("Sell", it.Id) end, W = 125, Disabled = it.Locked or it.Id == data.Equipped })
 	end
-	table.insert(buttons, { slotCost and ("+1 Slot (" .. NF.Short(slotCost) .. ")") or "Max Slots", C(200, 150, 40), function() act("BuySlot") end, W = 160, Disabled = not slotCost })
+	table.insert(buttons, { slotCost and ("+1 Slot (" .. NF.Short(slotCost) .. ")") or "Max Slots", C(185, 140, 42), function() act("BuySlot") end, W = 150, Disabled = not slotCost })
 	footer(p, buttons)
 end
 
@@ -757,12 +758,13 @@ render.Altar = function(p, data)
 	local rebCoinCost, rebEssCost = Config.RebirthCost(data.Rebirth or 0)
 	local canReb = (data.Coins or 0) >= rebCoinCost and (data.Essence or 0) >= rebEssCost
 	footer(p, {
-		{ "Sacrifice (+" .. comma(gain) .. ")", C(150, 70, 230), function()
+		{ "Sacrifice (+" .. comma(gain) .. ")", C(145, 72, 225), function()
 			local ids = {}; for id in pairs(sel.Altar) do table.insert(ids, id) end
-			sel.Altar = {}; act("Sacrifice", ids) end, W = 185, Disabled = gain == 0 },
-		{ "🔱 Rebirth (" .. NF.Short(rebCoinCost) .. "💰)", C(180, 90, 250), function() act("Rebirth") end, W = 185, Disabled = not canReb },
-		{ "Lucky Potion (750💰)", C(60, 170, 110), function() act("BrewLucky") end, W = 180 },
-		{ data.Rank >= elixir.RankRequired and ("Eclipse Elixir (" .. comma(elixir.EssenceCost) .. "✨)") or ("🔒 Elixir: Rank " .. elixir.RankRequired), C(220, 160, 40), function() act("BrewElixir") end, W = 195,
+			sel.Altar = {}; act("Sacrifice", ids) end, W = 165, Disabled = gain == 0 },
+		{ "🔥 Sacrifice Dupes", C(175, 75, 235), function() act("SacrificeDupes") end, W = 165 },
+		{ "🔱 Rebirth (" .. NF.Short(rebCoinCost) .. "💰)", C(180, 90, 250), function() act("Rebirth") end, W = 165, Disabled = not canReb },
+		{ "Lucky Potion (750💰)", C(52, 165, 108), function() act("BrewLucky") end, W = 160 },
+		{ data.Rank >= elixir.RankRequired and ("Eclipse Elixir (" .. comma(elixir.EssenceCost) .. "✨)") or ("🔒 Elixir: Rank " .. elixir.RankRequired), C(215, 155, 42), function() act("BrewElixir") end, W = 175,
 			Disabled = data.Rank < elixir.RankRequired or data.Essence < elixir.EssenceCost },
 	})
 end
@@ -861,9 +863,14 @@ local function hud(data)
 	local rCoin, rEss = Config.RebirthCost(data.Rebirth or 0)
 	gui.IconBar.RankButton.Dot.Visible = (data.Coins or 0) >= rCoin and (data.Essence or 0) >= rEss
 	gui.IconBar.ShopButton.Dot.Visible = (data.LuckySpins or 0) > 0
-	local cm = data.Settings and data.Settings.CutsceneMin
+	local cm = data.Settings and data.Settings.CutsceneMin or 4
+	local af = data.Settings and tonumber(data.Settings.AutoFilterTier) or 0
 	local skip = gui.RollDock.Chips:FindFirstChild("Skip")
-	if skip and cm then local t = AnimalData.Tiers[cm]; skip.Value.Text = "⏭ Skip < T" .. cm .. (t and (" " .. t.Name) or "") end
+	if skip then
+		local t = AnimalData.Tiers[cm]
+		local afTag = af > 0 and string.format(" · ♻️<T%d", af) or ""
+		skip.Value.Text = "⏭ Skip < T" .. cm .. (t and (" " .. t.Name) or "") .. afTag
+	end
 	Ctl.RefreshDock()
 end
 

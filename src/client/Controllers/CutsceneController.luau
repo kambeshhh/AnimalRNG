@@ -730,17 +730,46 @@ end
 local function playOne(r)
 	r.TierIndex = r.TierIndex or AnimalData.TierIndex(r.Rarity)
 	local idx = r.TierIndex
-	if idx >= TOP then run(unattainable, r)
-	elseif idx <= 3 or idx < minTier() then quickCard(r)
-	else local P = profileFor(idx); run(function(rr, J) runProfile(rr, P, J) end, r) end
+	local alwaysNew = settings().AlwaysCutsceneNew ~= false and r.NewIndex == true
+	if idx >= TOP then
+		run(unattainable, r)
+	elseif (idx <= 3 or idx < minTier()) and not alwaysNew and not r.Replay then
+		quickCard(r)
+	else
+		local P = profileFor(math.max(4, idx))
+		run(function(rr, J) runProfile(rr, P, J) end, r)
+	end
 end
 Cut.PlayOne = playOne
+
+-- Sol's RNG Collection Index Cutscene Replay (Allows any player to replay the full cutscene of any discovered animal!)
+function Cut.ReplayFromIndex(animalName, tierIdx, mutation)
+	if State.CutsceneBusy then return end
+	local idx = math.clamp(tonumber(tierIdx) or 4, 1, TOP)
+	local t = AnimalData.Tiers[idx]
+	local mut = mutation or "Normal"
+	local item = { Animal = animalName, Tier = idx, Mutation = mut }
+	local r = {
+		Name = AnimalData.ItemName(item),
+		Rarity = AnimalData.ItemRarity(item),
+		Tier = t.Name,
+		TierIndex = idx,
+		Mutation = mut,
+		Item = item,
+		Replay = true,
+	}
+	task.spawn(function()
+		State.CutsceneBusy = true
+		pcall(playOne, r)
+		State.CutsceneBusy = false
+	end)
+end
 
 -- Studio-only client preview (server hook / "/tier N" chat command use the real remotes instead)
 function Cut.Preview(idx)
 	if not RunService:IsStudio() then return end
 	local t = AnimalData.Tiers[math.clamp(idx, 1, TOP)]
-	playOne({ Name = "[Preview] " .. t.Name, Rarity = t.Min, Tier = t.Name, TierIndex = idx, Item = { Animal = "SolarEclipseDragon" }, Preview = true })
+	playOne({ Name = "[Preview] " .. t.Name, Rarity = t.Min, Tier = t.Name, TierIndex = idx, Item = { Animal = "SolarEclipseDragon" }, Preview = true, Replay = true })
 end
 
 ------------------------------------------------------------------ 5x strip
@@ -770,16 +799,17 @@ local function multiStrip(batch)
 		local best = i == batch.BestIndex
 		local col = tierColor(r.TierIndex or AnimalData.TierIndex(r.Rarity))
 		local f = Instance.new("Frame"); f.LayoutOrder = i; f.Size = UDim2.fromOffset(best and 148 or 124, best and 142 or 122); f.ZIndex = 20
-		UI.Glass(f, 14, col, col:Lerp(WHITE, 0.4))
-		f.Fill.Color = ColorSequence.new(col:Lerp(C(20, 22, 48), best and 0.35 or 0.65), C(12, 14, 30)); f.Stroke.Thickness = best and 3.5 or 2
+		UI.Glass(f, 10, col, col:Lerp(WHITE, 0.4))
+		f.Fill.Color = ColorSequence.new(col:Lerp(C(20, 22, 34), best and 0.35 or 0.68), C(12, 14, 22)); f.Stroke.Thickness = best and 2.5 or 1.5
 		if best and UI.FoilShimmer then UI.FoilShimmer(f, col) end
 		if r.Item and r.Item.Animal then
 			cardViewport(f, r.Item.Animal, UDim2.fromOffset(best and 64 or 54, best and 64 or 54), UDim2.new(0.5, -(best and 32 or 27), 0, 4))
 		end
 		local n = UI.Label(f, r.Name, UDim2.new(1, -12, 0, best and 34 or 28), UDim2.fromOffset(6, best and 66 or 56), 15, WHITE, UI.Display, { TextScaled = true, ZIndex = 21 })
 		local cap = Instance.new("UITextSizeConstraint"); cap.MaxTextSize = best and 18 or 15; cap.Parent = n
-		UI.Label(f, AnimalData.FormatRarityShort(r.Rarity), UDim2.new(1, -12, 0, 16), UDim2.new(0, 6, 1, -38), 12, C(255, 220, 110), Enum.Font.GothamBold, { ZIndex = 21 })
-		UI.Label(f, (best and "★ BEST  " or "") .. r.Tier:upper() .. (r.Bonus and "  ★" or ""), UDim2.new(1, -12, 0, 16), UDim2.new(0, 6, 1, -20), 11, col, UI.Display, { ZIndex = 21 })
+		UI.Label(f, "[ " .. AnimalData.FormatRarityShort(r.Rarity) .. " ]", UDim2.new(1, -12, 0, 16), UDim2.new(0, 6, 1, -38), 12, C(255, 220, 110), Enum.Font.GothamBold, { ZIndex = 21 })
+		local statusTag = (r.Status == "Filtered" and "♻️ ESSENCE") or ((best and "★ BEST  " or "") .. r.Tier:upper() .. (r.Bonus and "  ★" or ""))
+		UI.Label(f, statusTag, UDim2.new(1, -12, 0, 16), UDim2.new(0, 6, 1, -20), 11, r.Status == "Filtered" and C(200, 150, 255) or col, UI.Display, { ZIndex = 21 })
 		local sc = Instance.new("UIScale"); sc.Scale = 0.2; sc.Parent = f
 		f.Parent = mr
 		task.delay(i * 0.07, function() tw(sc, { Scale = 1 }, 0.25, Enum.EasingStyle.Back); sfx(nil, "Tick", 0.4, 0.9 + i * 0.08) end)
@@ -796,7 +826,8 @@ function Cut.PlayBatch(batch)
 		if batch.Multi then
 			multiStrip(batch)
 			local best = batch.Results[batch.BestIndex]
-			if best.TierIndex >= TOP or (best.TierIndex >= 4 and best.TierIndex >= minTier()) then task.wait(0.9); playOne(best)
+			local alwaysNew = settings().AlwaysCutsceneNew ~= false and best.NewIndex == true
+			if best.TierIndex >= TOP or alwaysNew or (best.TierIndex >= 4 and best.TierIndex >= minTier()) then task.wait(0.9); playOne(best)
 			else task.wait(0.6) end
 		else
 			playOne(batch.Results[1])
@@ -804,13 +835,16 @@ function Cut.PlayBatch(batch)
 	end)
 	if not ok then warn("[Cutscene] " .. tostring(err)) end
 	State.CutsceneBusy = false
-	local vaulted, sold, coins = 0, 0, 0
+	local vaulted, sold, filtered, coins, essence = 0, 0, 0, 0, 0
 	for _, r in ipairs(batch.Results) do
-		if r.Status == "Vault" then vaulted += 1 elseif r.Status == "Sold" then sold += 1; coins += r.Coins end
+		if r.Status == "Vault" then vaulted += 1
+		elseif r.Status == "Sold" then sold += 1; coins += (r.Coins or 0); essence += (r.Essence or 0)
+		elseif r.Status == "Filtered" then filtered += 1; coins += (r.Coins or 0); essence += (r.Essence or 0) end
 		if r.Bonus then sfx(nil, "Hello", 0.5, 1.1) end
 	end
-	if vaulted > 0 then UI.Toast(string.format("Inventory full — %d rare pull%s saved to your Vault 📦", vaulted, vaulted == 1 and "" or "s"), Config.UI.Gold) end
-	if sold > 0 then UI.Toast(string.format("Inventory full — auto-sold %d common%s for %s Coins", sold, sold == 1 and "" or "s", AnimalData.Comma(coins)), Config.UI.Muted) end
+	if vaulted > 0 then UI.Toast(string.format("Storage full — %d rare pull%s saved to your Vault 📦", vaulted, vaulted == 1 and "" or "s"), Config.UI.Gold) end
+	if filtered > 0 then UI.Toast(string.format("♻️ Auto-Transmuted %d pull%s ➔ +%s Coins & +%s ✨ Essence", filtered, filtered == 1 and "" or "s", AnimalData.Comma(coins), AnimalData.Comma(essence)), C(195, 145, 255)) end
+	if sold > 0 then UI.Toast(string.format("Storage full — auto-sold %d common%s for %s Coins", sold, sold == 1 and "" or "s", AnimalData.Comma(coins)), Config.UI.Muted) end
 end
 
 ------------------------------------------------------------------ setup + server announcements

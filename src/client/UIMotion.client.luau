@@ -26,12 +26,9 @@ for _, e in { { dock, UDim2.fromOffset(0, 220) }, { bar, UDim2.fromOffset(-140, 
 	task.delay(0.15, function() tw(o, { Position = home }, 0.7, Enum.EasingStyle.Back) end)
 end
 
--- 2) Animated borders
+-- 2) Subtle selection sweeps (only on active IconBar SelectRing & JackpotBanner; main HUD frames stay crisp matte slate)
 local sweeps = {}
 local function addSweep(stroke, speed, seq) local g = gradOn(stroke, "Sweep", seq or SWEEP); if g then table.insert(sweeps, { g = g, s = speed }) end end
-addSweep(dock.Bar:FindFirstChild("Stroke"), 70, GRAIL)
-addSweep(gui.TopCenter.WeatherPill:FindFirstChild("Stroke"), 55)
-addSweep(wallet:FindFirstChild("Stroke"), 45, GRAIL)
 local jb = gui:FindFirstChild("JackpotBanner"); if jb then addSweep(jb:FindFirstChild("Stroke"), 120, GRAIL) end
 local ring = ability:FindFirstChild("Ring"); local ringGrad = ring and ring:FindFirstChildOfClass("UIGradient")
 local dots = {}

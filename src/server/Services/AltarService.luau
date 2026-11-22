@@ -11,9 +11,8 @@ function Altar.Init(services) S = services end
 function Altar.Start()
 	local A = S.Actions
 	A.Sacrifice = function(player, ids)
-		if not S.StationService.Near(player, "Altar") then return end
 		local data = S.DataService.Get(player)
-		if typeof(ids) ~= "table" then return end
+		if not data or typeof(ids) ~= "table" then return end
 		local gained, n = 0, 0
 		for _, id in ipairs(ids) do
 			local item = typeof(id) == "string" and S.DataService.FindItem(data, id)
@@ -24,7 +23,51 @@ function Altar.Start()
 		end
 		if n == 0 then S.DataService.Toast(player, "Select unlocked, unequipped animals to sacrifice."); return end
 		data.Essence += gained; data.Stats.Sacrifices += n
-		S.DataService.Toast(player, string.format("Sacrificed %d animal%s: +%s Essence", n, n == 1 and "" or "s", AnimalData.Comma(gained)), Color3.fromRGB(200, 140, 255))
+		S.DataService.AutoFillPack(data)
+		if S.MorphService and S.MorphService.RefreshPack then S.MorphService.RefreshPack(player) end
+		S.DataService.Toast(player, string.format("✨ Sacrificed %d animal%s: +%s Essence", n, n == 1 and "" or "s", AnimalData.Comma(gained)), Color3.fromRGB(200, 140, 255))
+		S.DataService.Sync(player)
+	end
+	A.SacrificeDupes = function(player)
+		local data = S.DataService.Get(player)
+		if not data or #data.Inventory <= 1 then
+			S.DataService.Toast(player, "No unlocked duplicate animals to sacrifice.")
+			return
+		end
+		local bestBySpecies = {}
+		for _, it in ipairs(data.Inventory) do
+			local r = AnimalData.ItemRarity(it)
+			local curBest = bestBySpecies[it.Animal]
+			if not curBest or r > curBest.r or it.Id == data.Equipped then
+				bestBySpecies[it.Animal] = { id = it.Id, r = (it.Id == data.Equipped) and math.huge or r }
+			end
+		end
+		local toSac = {}
+		for _, it in ipairs(data.Inventory) do
+			local best = bestBySpecies[it.Animal]
+			if best and it.Id ~= best.id and not it.Locked and it.Id ~= data.Equipped then
+				table.insert(toSac, it.Id)
+			end
+		end
+		if #toSac == 0 then
+			S.DataService.Toast(player, "No unlocked duplicate animals found!")
+			return
+		end
+		local gained, n = 0, 0
+		for _, id in ipairs(toSac) do
+			local item = S.DataService.FindItem(data, id)
+			if item and not item.Locked and item.Id ~= data.Equipped then
+				gained += AnimalData.ItemRarity(item); n += 1
+				S.DataService.RemoveItem(data, item.Id)
+			end
+		end
+		if n > 0 then
+			data.Essence += gained; data.Stats.Sacrifices += n
+			S.DataService.AutoFillPack(data)
+			if S.MorphService and S.MorphService.RefreshPack then S.MorphService.RefreshPack(player) end
+			S.DataService.Toast(player, string.format("🔥 Sacrificed %d duplicate%s: +%s ✨ Essence!", n, n == 1 and "" or "s", AnimalData.Comma(gained)), Color3.fromRGB(200, 140, 255))
+			S.DataService.Notify(player, "PowerUpFX", { Kind = "Skill", Color = Color3.fromRGB(200, 140, 255) })
+		end
 		S.DataService.Sync(player)
 	end
 	A.BrewLucky = function(player)

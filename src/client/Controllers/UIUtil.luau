@@ -69,13 +69,13 @@ function UI.JuiceAll(root)
 	for _, d in ipairs(root:GetDescendants()) do if d:IsA("GuiButton") and d:GetAttribute("Juicy") then UI.Juice(d) end end
 end
 
-UI.Display = Enum.Font.FredokaOne -- remapped to Fredoka/Montserrat Black by UITheme
+UI.Display = Enum.Font.GothamBlack
 function UI.Glass(f, radius, colA, colB)
-	f.BackgroundColor3 = Color3.new(1, 1, 1); f.BackgroundTransparency = 0.04; f.BorderSizePixel = 0
+	f.BackgroundColor3 = Color3.new(1, 1, 1); f.BackgroundTransparency = 0.05; f.BorderSizePixel = 0
 	local fill = Instance.new("UIGradient"); fill.Name = "Fill"; fill.Rotation = 90
 	fill.Color = Theme.GlassFill; fill.Parent = f
-	local c = Instance.new("UICorner"); c.CornerRadius = UDim.new(0, math.max(radius or 14, 10)); c.Parent = f
-	local s = Instance.new("UIStroke"); s.Name = "Stroke"; s.Thickness = 3; s.Transparency = 0; s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border; s.Color = colA and Color3.new(1, 1, 1) or Theme.Colors.BorderInner; s.Parent = f
+	local c = Instance.new("UICorner"); c.CornerRadius = UDim.new(0, math.clamp(radius or 10, 6, 12)); c.Parent = f
+	local s = Instance.new("UIStroke"); s.Name = "Stroke"; s.Thickness = colA and 2 or 1.5; s.Transparency = 0.12; s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border; s.Color = colA and Color3.new(1, 1, 1) or Theme.Colors.BorderInner; s.Parent = f
 	if colA then local g = Instance.new("UIGradient"); g.Color = ColorSequence.new(colA, colB or colA); g.Rotation = 35; g.Parent = s end
 	return f
 end
@@ -83,12 +83,12 @@ end
 function UI.FoilShimmer(card, color)
 	card.ClipsDescendants = true
 	local sh = Instance.new("Frame"); sh.Name = "FoilGleam"; sh.BackgroundColor3 = color or Color3.new(1, 1, 1)
-	sh.BorderSizePixel = 0; sh.Size = UDim2.new(0.35, 0, 1.8, 0); sh.AnchorPoint = Vector2.new(0.5, 0.5)
-	sh.Position = UDim2.fromScale(-0.4, 0.5); sh.Rotation = 24; sh.BackgroundTransparency = 0.35; sh.ZIndex = card.ZIndex + 3
+	sh.BorderSizePixel = 0; sh.Size = UDim2.new(0.32, 0, 1.8, 0); sh.AnchorPoint = Vector2.new(0.5, 0.5)
+	sh.Position = UDim2.fromScale(-0.4, 0.5); sh.Rotation = 24; sh.BackgroundTransparency = 0.45; sh.ZIndex = card.ZIndex + 3
 	local g = Instance.new("UIGradient")
 	g.Transparency = NumberSequence.new({
 		NumberSequenceKeypoint.new(0, 1),
-		NumberSequenceKeypoint.new(0.5, 0.35),
+		NumberSequenceKeypoint.new(0.5, 0.45),
 		NumberSequenceKeypoint.new(1, 1),
 	})
 	g.Parent = sh; sh.Parent = card
@@ -97,7 +97,7 @@ function UI.FoilShimmer(card, color)
 		while sh.Parent and card.Parent do
 			sh.Position = UDim2.fromScale(-0.4, 0.5)
 			UI.Tween(sh, { Position = UDim2.fromScale(1.4, 0.5) }, 1.15, Enum.EasingStyle.Sine)
-			task.wait(3.2 + math.random() * 1.5)
+			task.wait(3.5 + math.random() * 1.5)
 		end
 	end)
 end
@@ -105,6 +105,7 @@ end
 function UI.Label(parent, text, size, pos, tsize, color, font, props)
 	local l = Instance.new("TextLabel"); l.BackgroundTransparency = 1; l.Text = text; l.Size = size; l.Position = pos or UDim2.new()
 	l.TextSize = tsize or 16; l.TextColor3 = color or Config.UI.Text; l.Font = font or Enum.Font.GothamBold; l.RichText = true; l.TextWrapped = true
+	l.FontFace = (font == UI.Display) and Theme.Fonts.Display or Theme.Fonts.Bold
 	if props then for k, v in pairs(props) do l[k] = v end end
 	l.Parent = parent
 	return l
@@ -112,12 +113,12 @@ end
 
 function UI.Button(parent, text, size, color, onClick, props)
 	local b = Instance.new("TextButton"); b.Text = text; b.Size = size; b.BackgroundColor3 = color or Theme.Colors.CardHi; b.AutoButtonColor = false
-	b.Font = Enum.Font.GothamBlack; b.TextSize = 16; b.TextColor3 = Config.UI.Text; b.TextWrapped = true; b.RichText = true
-	local c = Instance.new("UICorner"); c.CornerRadius = UDim.new(0, 14); c.Parent = b
-	local s = Instance.new("UIStroke"); s.Thickness = 3; s.Transparency = 0; s.Color = Theme.Colors.Outline; s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border; s.Parent = b
-	local g = Instance.new("UIGradient"); g.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(165, 172, 190)); g.Rotation = 90; g.Parent = b
-	b.FontFace = Theme.Fonts.Black; b.TextSize = 16
-	local ts = Instance.new("UIStroke"); ts.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual; ts.Thickness = 2; ts.Color = Theme.Colors.Outline; ts.Transparency = 0; ts.Parent = b
+	b.Font = Enum.Font.GothamBlack; b.TextSize = 15; b.TextColor3 = Config.UI.Text; b.TextWrapped = true; b.RichText = true
+	local c = Instance.new("UICorner"); c.CornerRadius = UDim.new(0, 8); c.Parent = b
+	local s = Instance.new("UIStroke"); s.Thickness = 2; s.Transparency = 0.08; s.Color = Theme.Colors.Outline; s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border; s.Parent = b
+	local g = Instance.new("UIGradient"); g.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(205, 212, 226)); g.Rotation = 90; g.Parent = b
+	b.FontFace = Theme.Fonts.Black; b.TextSize = 15
+	local ts = Instance.new("UIStroke"); ts.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual; ts.Thickness = 1.5; ts.Color = Theme.Colors.Outline; ts.Transparency = 0.2; ts.Parent = b
 	if props then for k, v in pairs(props) do b[k] = v end end
 	b.Parent = parent
 	UI.Juice(b)

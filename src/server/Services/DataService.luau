@@ -23,7 +23,7 @@ local function default()
 		Totems = {}, EquippedTotems = {}, Potions = { Lucky = 0, Elixir = 0 }, LuckyUntil = 0, ElixirArmed = false,
 		Essence = 0, Rank = 1, Index = {}, NextId = 1,
 		Stats = { Rolls = 0, RarestPull = 0, RarestName = "", AlphaTime = 0, Crafts = 0, Forges = 0, Sacrifices = 0, BonusCounter = 0, UnluckyStreak = 0, StreakStacks = 0, Rebirths = 0 },
-		Vault = {}, Settings = { CutsceneMin = 4, ReduceOthersFX = false }, LuckBoostUntil = 0, Purchases = {}, StudioPasses = {},
+		Vault = {}, Settings = { CutsceneMin = 4, ReduceOthersFX = false, AutoFilterTier = 0, AutoEquipRarer = true, AlwaysCutsceneNew = true }, LuckBoostUntil = 0, Purchases = {}, StudioPasses = {},
 		-- Fusion systems: Anime Dice ladder, Slime RNG Rebirth & Skill Tree, Active Companion Pack, Promo Codes & Lucky Spins
 		Dice = { Wooden = true }, EquippedDie = "Wooden",
 		Relics = {}, EquippedRelics = {},
@@ -129,25 +129,53 @@ function DataService.NewItem(data, roll)
 	return item
 end
 
--- Adds a freshly rolled animal: keep if there's room, rare pulls (1 in 1,000+) go to the Vault (never lost), commons auto-sell
-function DataService.AddRolled(player, roll)
+-- Adds a freshly rolled animal:
+-- 1) Smart Auto-Filter (Sol's RNG x Slime RNG): if below AutoFilterTier (and not a NEW! Index discovery or rare Mutation), auto-transmutes into 100% Coins + 25% Essence.
+-- 2) Keep if there's room (and Auto-Equip if rarer than current equipped morph when AutoEquipRarer is enabled).
+-- 3) Rare pulls (1 in 1,000+ or T7+) go to Vault when full; commons auto-sell.
+function DataService.AddRolled(player, roll, isNewIndex)
 	local data = DataService.Get(player)
 	local item = DataService.NewItem(data, roll)
 	local rarity = AnimalData.ItemRarity(item)
+	local st = data.Settings or {}
+	local filterTier = tonumber(st.AutoFilterTier) or 0
+	local isSpecialMut = (item.Mutation or "Normal") ~= "Normal"
+
+	if filterTier > 0 and (item.Tier or 1) < filterTier and not isNewIndex and not isSpecialMut then
+		local coins = math.floor(Config.SellValue(rarity) * DataService.CoinMult(data))
+		local essence = math.max(1, math.floor(rarity * 0.25))
+		data.Coins += coins
+		data.Essence = (data.Essence or 0) + essence
+		return "Filtered", item, coins, essence
+	end
+
 	if #data.Inventory < data.Slots then
 		table.insert(data.Inventory, item)
+		-- Auto-Equip If Rarer (Sol's RNG x PETS GO! QoL)
+		if st.AutoEquipRarer ~= false then
+			local curEq = data.Equipped and DataService.FindItem(data, data.Equipped)
+			local curRarity = curEq and AnimalData.ItemRarity(curEq) or 0
+			if rarity > curRarity then
+				data.Equipped = item.Id
+				DataService.AutoFillPack(data)
+				if S.MorphService and S.MorphService.Spawn then task.defer(S.MorphService.Spawn, player, true) end
+				return "Kept", item, 0, 0
+			end
+		end
 		if #(data.Pack or {}) < Config.Pack.MaxCompanions and item.Id ~= data.Equipped then
 			DataService.AutoFillPack(data)
 			if S.MorphService and S.MorphService.RefreshPack then task.defer(S.MorphService.RefreshPack, player) end
 		end
-		return "Kept", item, 0
+		return "Kept", item, 0, 0
 	elseif (rarity >= Config.Roll.StarThreshold or (item.Tier or 1) >= 7) and #data.Vault < Config.Roll.VaultSize then
 		table.insert(data.Vault, item)
-		return "Vault", item, 0
+		return "Vault", item, 0, 0
 	end
 	local coins = math.floor(Config.SellValue(rarity) * DataService.CoinMult(data))
+	local essence = math.max(1, math.floor(rarity * 0.15))
 	data.Coins += coins
-	return "Sold", item, coins
+	data.Essence = (data.Essence or 0) + essence
+	return "Sold", item, coins, essence
 end
 
 function DataService.RemoveItem(data, id)

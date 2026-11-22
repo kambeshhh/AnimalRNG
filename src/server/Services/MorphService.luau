@@ -110,14 +110,22 @@ local function applyShowcase(model, scale)
 	model:SetAttribute("Showcase", true); model:SetAttribute("HaloRadius", radius); model:SetAttribute("HaloHeight", height - root.Size.Y / 2)
 end
 
--- Sol's RNG-style Sacred Floor Sigil & Orbiting Energy Spheres for Tier 8+ (Exalted -> Unattainable)
+-- Sol's RNG-style 3D Character Auras (Tiers 2-7 subtle elemental/starlight motes; Tiers 8-28 Sacred Floor Sigils & Orbiting Energy Spheres)
 local function applyTierSigil(model, item)
 	local tierIdx = AnimalData.ItemTierIndex(item)
-	if tierIdx < 8 then return end
 	local root, mesh = model.PrimaryPart, model:FindFirstChild("AnimalMesh")
 	if not root then return end
 	local tier = AnimalData.Tiers[tierIdx]
 	local col = tier.Color
+	if tierIdx >= 2 and tierIdx < 8 and mesh then
+		local e = emitter(mesh, col, 6 + tierIdx * 2, 0.35 + tierIdx * 0.04, 1.5 + tierIdx * 0.25)
+		e.Name = "TierAuraMotes"
+		if tierIdx >= 5 then
+			light(mesh, col, 8 + tierIdx, 1.2)
+		end
+		return
+	end
+	if tierIdx < 8 then return end
 	local rainbow = tierIdx >= 25 or item.Mutation == "Prismatic" or item.Mutation == "Singularity"
 	local seq = rainbow and RAINBOW or ColorSequence.new(col, col:Lerp(Color3.new(1, 1, 1), 0.55))
 	local floorY = -(root.Size.Y / 2) - ((model:FindFirstChildOfClass("Humanoid") and model:FindFirstChildOfClass("Humanoid").HipHeight or 2)) + 0.15
@@ -220,8 +228,8 @@ end
 
 local function chip(parent, name, text, textColor, bg, stroke, height, order, font)
 	local f = Instance.new("Frame"); f.Name = name; f.LayoutOrder = order; f.AutomaticSize = Enum.AutomaticSize.X
-	f.Size = UDim2.new(0, 0, height, 0); f.BackgroundColor3 = bg or Color3.new(0, 0, 0); f.BackgroundTransparency = bg and 0.2 or 1
-	local c = Instance.new("UICorner"); c.CornerRadius = UDim.new(1, 0); c.Parent = f
+	f.Size = UDim2.new(0, 0, height, 0); f.BackgroundColor3 = bg or Color3.new(0, 0, 0); f.BackgroundTransparency = bg and 0.14 or 1
+	local c = Instance.new("UICorner"); c.CornerRadius = UDim.new(0, 6); c.Parent = f
 	if stroke then local st = Instance.new("UIStroke"); st.Color = stroke; st.Thickness = 1.5; st.Transparency = 0.15; st.Parent = f end
 	local pad = Instance.new("UIPadding"); pad.PaddingLeft = UDim.new(0, 10); pad.PaddingRight = UDim.new(0, 10); pad.Parent = f
 	local l = Instance.new("TextLabel"); l.Name = "Label"; l.BackgroundTransparency = 1; l.AutomaticSize = Enum.AutomaticSize.X; l.Size = UDim2.fromScale(0, 1)
@@ -241,24 +249,27 @@ local function fullTitle(player)
 	return t
 end
 
--- Overhead tag: [crown chip] / name / [tier chip]. Sized in studs so it shrinks with distance and never stacks on top of other tags.
+-- Sol's RNG x Fisch Overhead Tag: [Title/Rebirth] / PlayerName / ★ TIER ★ • ANIMAL NAME [ 1 in X ]
 local function makeTag(player, model, item)
 	local head = model:FindFirstChild("Head"); if not head then return end
 	local mesh = model:FindFirstChild("AnimalMesh")
 	local topY = mesh and (mesh.Position.Y + mesh.Size.Y / 2) or (head.Position.Y + 1)
-	local tag = Instance.new("BillboardGui"); tag.Name = "Tag"; tag.LightInfluence = 0; tag.MaxDistance = 70; tag.AlwaysOnTop = false
-	tag.Size = UDim2.fromScale(7, 2.5); tag.SizeOffset = Vector2.new(0, 0.5)
-	tag.StudsOffsetWorldSpace = Vector3.new(0, topY - head.Position.Y + 0.6, 0)
+	local tag = Instance.new("BillboardGui"); tag.Name = "Tag"; tag.LightInfluence = 0; tag.MaxDistance = 75; tag.AlwaysOnTop = false
+	tag.Size = UDim2.fromScale(7.5, 2.6); tag.SizeOffset = Vector2.new(0, 0.5)
+	tag.StudsOffsetWorldSpace = Vector3.new(0, topY - head.Position.Y + 0.65, 0)
 	local list = Instance.new("UIListLayout"); list.HorizontalAlignment = Enum.HorizontalAlignment.Center; list.VerticalAlignment = Enum.VerticalAlignment.Bottom
 	list.SortOrder = Enum.SortOrder.LayoutOrder; list.Padding = UDim.new(0.04, 0); list.Parent = tag
 	local title = fullTitle(player)
-	local crown = chip(tag, "Title", title, C(40, 26, 6), C(255, 205, 90), C(255, 240, 180), 0.24, 1, Enum.Font.GothamBlack)
+	local crown = chip(tag, "Title", title, C(245, 212, 92), C(16, 18, 26), C(70, 78, 104), 0.23, 1, Enum.Font.GothamBlack)
 	crown.Visible = title ~= ""
-	local name = chip(tag, "PlayerName", player.DisplayName, C(255, 255, 255), nil, nil, 0.3, 2, Enum.Font.GothamBlack)
-	local ns = Instance.new("UIStroke"); ns.Thickness = 2; ns.Color = C(10, 12, 25); ns.Parent = name.Label
+	local name = chip(tag, "PlayerName", player.DisplayName, C(255, 255, 255), nil, nil, 0.28, 2, Enum.Font.GothamBlack)
+	local ns = Instance.new("UIStroke"); ns.Thickness = 2; ns.Color = C(10, 12, 20); ns.Parent = name.Label
 	local rarity = AnimalData.ItemRarity(item)
 	local tier = AnimalData.TierFor(item)
-	chip(tag, "AnimalLine", string.format("%s  <font color='#C8D2EB'>%s</font>", AnimalData.ItemName(item), AnimalData.FormatRarityShort(rarity)), tier.Color, C(15, 23, 42), tier.Color, 0.24, 3)
+	local tierIdx = AnimalData.ItemTierIndex(item)
+	chip(tag, "AnimalLine", string.format("<font color='#%s'>[T%d %s]</font>  %s  <font color='#F6E05E'>[ %s ]</font>",
+		tier.Color:ToHex(), tierIdx, tier.Name:upper(), AnimalData.ItemName(item):upper(), AnimalData.FormatRarity(rarity)),
+		C(244, 246, 252), C(14, 16, 24), tier.Color, 0.25, 3, Enum.Font.GothamBlack)
 	tag.Parent = head
 end
 
