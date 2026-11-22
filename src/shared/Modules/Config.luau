@@ -258,22 +258,22 @@ Config.Codes = {
 	UPDATE1   = { Spins = 2, Essence = 2500, Coins = 10000,                                 Desc = "2 Lucky Spins, 2,500 Essence & 10,000 Coins" },
 }
 
--- Custom-Synthesized 44.1kHz Studio WAV SFX uploaded via Open Cloud + multi-harmonic layering
+-- 100% Built-In Roblox Studio Engine Sounds (zero external rbxassetid upload/permission errors)
 Config.Sounds = {
-	Tick   = "rbxassetid://109206875073924", -- AnimalRNG_CrystalClick_SFX (2-note B5->E6 crystal UI click)
-	Click  = "rbxassetid://109206875073924", -- AnimalRNG_CrystalClick_SFX
-	Pop    = "rbxassetid://96656639124588",  -- AnimalRNG_DiceShatter_SFX (crystalline pop & bounce)
-	Sweep  = "rbxassetid://109623748397861", -- AnimalRNG_TensionRiser_SFX (exponential synth riser + heartbeat)
-	Reveal = "rbxassetid://84720159679329",  -- AnimalRNG_StarburstChord_SFX (2.4s celestial starburst choir & bell triad)
-	Bass   = "rbxassetid://120971850259619", -- AnimalRNG_SubBassDrop_SFX (1.5s 110Hz->35Hz cinematic sub-bass drop)
-	Roar   = "rbxassetid://120971850259619", -- AnimalRNG_SubBassDrop_SFX
-	Whoosh = "rbxassetid://96656639124588",  -- AnimalRNG_DiceShatter_SFX (dice throw & bounce)
-	Fail   = "rbxassetid://15675075163",     -- Roblox_UI_Delete
-	Rise   = "rbxassetid://109623748397861", -- AnimalRNG_TensionRiser_SFX (tension riser)
-	Swish  = "rbxassetid://96656639124588",  -- AnimalRNG_DiceShatter_SFX (dice bounce)
-	Chime  = "rbxassetid://109206875073924", -- AnimalRNG_CrystalClick_SFX (crystal shatter / coin chime)
-	Hello  = "rbxassetid://84720159679329",  -- AnimalRNG_StarburstChord_SFX (bonus roll / rebirth chord)
-	Low    = "rbxassetid://120971850259619", -- AnimalRNG_SubBassDrop_SFX (Unattainable build-up sub-bass)
+	Tick   = "rbxasset://sounds/clickfast.wav",
+	Click  = "rbxasset://sounds/button.wav",
+	Pop    = "rbxasset://sounds/snap.wav",
+	Sweep  = "rbxasset://sounds/Launching rocket.wav",
+	Reveal = "rbxasset://sounds/electronicpingshort.wav",
+	Bass   = "rbxasset://sounds/bass.wav",
+	Roar   = "rbxasset://sounds/collide.wav",
+	Whoosh = "rbxasset://sounds/Rocket whoosh 01.wav",
+	Fail   = "rbxasset://sounds/splat.wav",
+	Rise   = "rbxasset://sounds/Launching rocket.wav",
+	Swish  = "rbxasset://sounds/swordslash.wav",
+	Chime  = "rbxasset://sounds/electronicpingshort.wav",
+	Hello  = "rbxasset://sounds/unsheath.wav",
+	Low    = "rbxasset://sounds/bass.wav",
 }
 
 -- Built-in Roblox sounds (ship with the client: zero upload/permission failures). Every id here was verified
@@ -295,9 +295,9 @@ Config.AnimeSounds = {
 	Wind     = "rbxasset://sounds/action_falling.mp3",
 	Splash   = "rbxasset://sounds/impact_water.mp3",
 	Bass     = "rbxasset://sounds/bass.wav",
-	Thunder  = "rbxassetid://9125402735",
-	Rumble   = "rbxassetid://9038652624",
-	Stinger  = "rbxassetid://15675043410",
+	Thunder  = "rbxasset://sounds/Rocket shot.wav",
+	Rumble   = "rbxasset://sounds/collide.wav",
+	Stinger  = "rbxasset://sounds/unsheath.wav",
 }
 
 -- Built-in particle textures (verified on a live server)

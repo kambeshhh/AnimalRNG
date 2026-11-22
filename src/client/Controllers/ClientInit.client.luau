@@ -1,17 +1,30 @@
--- ClientInit: boots every client controller & preloads custom VFX textures + custom 44.1kHz WAV SFX
+-- ClientInit: boots every client controller & preloads textures/sounds with matching Instance types
 local RS = game:GetService("ReplicatedStorage")
 local ContentProvider = game:GetService("ContentProvider")
 task.spawn(function()
 	local ok, Config = pcall(require, RS:WaitForChild("Modules"):WaitForChild("Config"))
 	if ok and Config then
-		local list = {}
-		local seen = {}
-		for _, tbl in ipairs({ Config.VFXTextures, Config.Sounds, Config.AnimeSounds, Config.BuiltinTextures }) do
+		local objs, seen = {}, {}
+		for _, tbl in ipairs({ Config.Sounds, Config.AnimeSounds }) do
 			for _, id in pairs(tbl or {}) do
-				if not seen[id] then seen[id] = true; table.insert(list, id) end
+				if not seen[id] then
+					seen[id] = true
+					local s = Instance.new("Sound"); s.SoundId = id
+					table.insert(objs, s)
+				end
 			end
 		end
-		pcall(function() ContentProvider:PreloadAsync(list) end)
+		for _, tbl in ipairs({ Config.VFXTextures, Config.BuiltinTextures }) do
+			for _, id in pairs(tbl or {}) do
+				if not seen[id] then
+					seen[id] = true
+					local img = Instance.new("ImageLabel"); img.Image = id
+					table.insert(objs, img)
+				end
+			end
+		end
+		pcall(function() ContentProvider:PreloadAsync(objs) end)
+		for _, o in ipairs(objs) do o:Destroy() end
 	end
 end)
 
