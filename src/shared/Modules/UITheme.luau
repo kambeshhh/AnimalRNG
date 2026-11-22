@@ -27,9 +27,16 @@ T.Colors = {
 local K = T.Colors
 
 local MONT = "rbxasset://fonts/families/Montserrat.json"
-local FRED = Font.new("rbxasset://fonts/families/FredokaOne.json", Enum.FontWeight.Regular)
-local SARP = Font.new("rbxasset://fonts/families/Sarpanch.json", Enum.FontWeight.ExtraBold)
-local MONO = Font.new("rbxasset://fonts/families/RobotoMono.json", Enum.FontWeight.Bold)
+local function safeFont(enumItem, weight)
+	local ok, f = pcall(function()
+		local base = Font.fromEnum(enumItem)
+		return weight and Font.new(base.Family, weight) or base
+	end)
+	return (ok and f) or Font.new(MONT, weight or Enum.FontWeight.Black)
+end
+local FRED = safeFont(Enum.Font.FredokaOne, nil)
+local SARP = safeFont(Enum.Font.Sarpanch, Enum.FontWeight.ExtraBold)
+local MONO = safeFont(Enum.Font.RobotoMono, Enum.FontWeight.Bold)
 
 T.Fonts = {
 	Black    = Font.new(MONT, Enum.FontWeight.Black),
