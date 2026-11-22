@@ -6,7 +6,7 @@ Players.CharacterAutoLoads = false
 Net.Folder() -- create all remotes before anything else
 
 local ORDER = { "DataService", "WeatherService", "MorphService", "StationService", "AlphaZoneService", "ProgressionService",
-	"InventoryService", "RollService", "AbilityService", "AltarService", "TotemService", "ForgeService", "LeaderboardService", "MonetizationService", "AdminService" }
+	"HypeService", "InventoryService", "RollService", "AbilityService", "AltarService", "TotemService", "ForgeService", "LeaderboardService", "MonetizationService", "AdminService" }
 local S = { Actions = {} }
 for _, name in ipairs(ORDER) do S[name] = require(script.Parent.Services:WaitForChild(name)) end
 for _, name in ipairs(ORDER) do if S[name].Init then S[name].Init(S) end end

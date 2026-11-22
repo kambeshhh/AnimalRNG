@@ -22,7 +22,7 @@ local function default()
 		Materials = { FrostCore = 0, MagmaHeart = 0, EclipseDust = 0 },
 		Totems = {}, EquippedTotems = {}, Potions = { Lucky = 0, Elixir = 0 }, LuckyUntil = 0, ElixirArmed = false,
 		Essence = 0, Rank = 1, Index = {}, NextId = 1,
-		Stats = { Rolls = 0, RarestPull = 0, RarestName = "", AlphaTime = 0, Crafts = 0, Forges = 0, Sacrifices = 0, BonusCounter = 0, UnluckyStreak = 0, StreakStacks = 0, Rebirths = 0 },
+		Stats = { Rolls = 0, RarestPull = 0, RarestName = "", AlphaTime = 0, Crafts = 0, Forges = 0, Sacrifices = 0, BonusCounter = 0, UnluckyStreak = 0, StreakStacks = 0, Rebirths = 0, Crits = 0, Breakthroughs = 0, Overdrives = 0, BountiesDone = 0 },
 		Vault = {}, Settings = { CutsceneMin = 4, ReduceOthersFX = false, AutoFilterTier = 0, AutoEquipRarer = true, AlwaysCutsceneNew = true }, LuckBoostUntil = 0, Purchases = {}, StudioPasses = {},
 		-- Fusion systems: Anime Dice ladder, Slime RNG Rebirth & Skill Tree, Active Companion Pack, Promo Codes & Lucky Spins
 		Dice = { Wooden = true }, EquippedDie = "Wooden",
@@ -34,6 +34,9 @@ local function default()
 		LuckySpins = 1, LuckySpinArmed = false,
 		RedeemedCodes = {},
 		LastSeenOs = 0, OfflineCoinsPending = 0,
+		-- V6 Hype systems
+		Overdrive = 0,
+		Bounties = {},
 	}
 end
 
@@ -224,6 +227,7 @@ function DataService.Sync(player)
 		Pack = d.Pack, PackCPS = DataService.PackCPS(d), CoinMult = DataService.CoinMult(d),
 		LuckySpins = d.LuckySpins, LuckySpinArmed = d.LuckySpinArmed, RedeemedCodes = d.RedeemedCodes,
 		OfflineCoinsPending = d.OfflineCoinsPending,
+		Overdrive = d.Overdrive or 0, Bounties = d.Bounties or {},
 	})
 	DataService.UpdateLeaderstats(player)
 end

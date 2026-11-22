@@ -70,8 +70,33 @@ function Roll.Start()
 		if gp then return end
 		if input.KeyCode == Enum.KeyCode.R then Roll.Request(false)
 		elseif input.KeyCode == Enum.KeyCode.T then Roll.Request(true)
-		elseif input.KeyCode == Enum.KeyCode.F then toggleFast() end
+		elseif input.KeyCode == Enum.KeyCode.F then toggleFast()
+		elseif input.KeyCode == Enum.KeyCode.V then Net.Get("Action"):FireServer("ActivateOverdrive") end
 	end)
+	-- V6 Anime Overdrive Gauge Bar (clean matte-slate bar right above RollDock; click or press [V] at 100%)
+	local odBtn = dock:FindFirstChild("OverdriveBar")
+	if not odBtn then
+		odBtn = Instance.new("TextButton")
+		odBtn.Name = "OverdriveBar"
+		odBtn.AnchorPoint = Vector2.new(0.5, 1)
+		odBtn.Position = UDim2.new(0.5, 0, 0, -28)
+		odBtn.Size = UDim2.fromOffset(310, 24)
+		odBtn.BackgroundColor3 = C(16, 18, 25)
+		odBtn.BackgroundTransparency = 0.08
+		odBtn.BorderSizePixel = 0
+		odBtn.AutoButtonColor = false
+		odBtn.Text = ""
+		Instance.new("UICorner", odBtn).CornerRadius = UDim.new(0, 7)
+		local odStroke = Instance.new("UIStroke", odBtn); odStroke.Name = "Stroke"; odStroke.Thickness = 1.5; odStroke.Color = C(58, 66, 92)
+		local odFill = Instance.new("Frame", odBtn); odFill.Name = "Fill"; odFill.Size = UDim2.fromScale(0, 1); odFill.BorderSizePixel = 0
+		odFill.BackgroundColor3 = C(245, 165, 55)
+		Instance.new("UICorner", odFill).CornerRadius = UDim.new(0, 6)
+		local odLbl = Instance.new("TextLabel", odBtn); odLbl.Name = "Label"; odLbl.Size = UDim2.fromScale(1, 1); odLbl.BackgroundTransparency = 1
+		odLbl.FontFace = UI.Theme.Fonts.Display; odLbl.TextSize = 13; odLbl.TextColor3 = C(244, 246, 252); odLbl.ZIndex = 3
+		local odTxtStroke = Instance.new("UIStroke", odLbl); odTxtStroke.Thickness = 1.5; odTxtStroke.Color = C(8, 9, 13)
+		odBtn.Parent = dock
+		odBtn.Activated:Connect(function() Net.Get("Action"):FireServer("ActivateOverdrive") end)
+	end
 	Net.Get("RollResult").OnClientEvent:Connect(function(batch)
 		waiting = false
 		lastSent = os.clock(); lastWasMulti = batch.Multi == true
@@ -98,6 +123,30 @@ function Roll.Start()
 			badge.Text = "★ Bonus Roll in " .. bonusIn
 			badge.Size = UDim2.fromOffset(150, 22)
 			badge.TextColor3 = C(255, 220, 120); badge.BackgroundColor3 = C(20, 16, 44)
+		end
+		-- Overdrive gauge update
+		local odUntil = player:GetAttribute("OverdriveUntil") or 0
+		local odRem = odUntil - workspace:GetServerTimeNow()
+		local odVal = player:GetAttribute("Overdrive") or (State.Data and State.Data.Overdrive) or 0
+		local odMax = Config.Overdrive.Max or 100
+		if odRem > 0 then
+			local frac = math.clamp(odRem / Config.Overdrive.Duration, 0, 1)
+			odBtn.Fill.Size = UDim2.fromScale(frac, 1)
+			odBtn.Fill.BackgroundColor3 = C(255, 110, 55):Lerp(C(255, 205, 65), (math.sin(now * 10) + 1) / 2)
+			odBtn.Stroke.Color = C(255, 200, 75)
+			odBtn.Label.Text = string.format("🔥 OVERDRIVE ACTIVE · x2 LUCK · %.1fs", odRem)
+		elseif odVal >= odMax then
+			local pulse = (math.sin(now * 8) + 1) / 2
+			odBtn.Fill.Size = UDim2.fromScale(1, 1)
+			odBtn.Fill.BackgroundColor3 = C(235, 72, 88):Lerp(C(255, 190, 55), pulse)
+			odBtn.Stroke.Color = C(255, 220, 100)
+			odBtn.Label.Text = "⚡ UNLEASH OVERDRIVE [V] (x2 LUCK · +50% SPD)"
+		else
+			local frac = math.clamp(odVal / odMax, 0, 1)
+			odBtn.Fill.Size = UDim2.fromScale(frac, 1)
+			odBtn.Fill.BackgroundColor3 = C(78, 165, 245):Lerp(C(245, 172, 56), frac)
+			odBtn.Stroke.Color = C(58, 66, 92)
+			odBtn.Label.Text = string.format("⚡ OVERDRIVE GAUGE  %d%%  (Roll to charge)", math.floor(frac * 100))
 		end
 		if State.Auto and ready and not State.CutsceneBusy then Roll.Request(autoMulti and canMulti()) end
 	end)

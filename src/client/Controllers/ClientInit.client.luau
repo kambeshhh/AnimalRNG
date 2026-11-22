@@ -6,11 +6,10 @@ task.spawn(function()
 	if ok and Config then
 		local list = {}
 		local seen = {}
-		for _, id in pairs(Config.VFXTextures or {}) do
-			if not seen[id] then seen[id] = true; table.insert(list, id) end
-		end
-		for _, id in pairs(Config.Sounds or {}) do
-			if not seen[id] then seen[id] = true; table.insert(list, id) end
+		for _, tbl in ipairs({ Config.VFXTextures, Config.Sounds, Config.AnimeSounds, Config.BuiltinTextures }) do
+			for _, id in pairs(tbl or {}) do
+				if not seen[id] then seen[id] = true; table.insert(list, id) end
+			end
 		end
 		pcall(function() ContentProvider:PreloadAsync(list) end)
 	end

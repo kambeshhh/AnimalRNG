@@ -620,6 +620,30 @@ render.Rank = function(p, data)
 		reb, curLuckM, curCoinM, data.Rank, #Config.Ranks, cur.Name)
 	list(p.Body)
 
+	-- -1) LIVE 3-SLOT HUNTER BOUNTY BOARD (Auto-refreshing short-term goals)
+	local bounties = data.Bounties or {}
+	if #bounties > 0 then
+		local bHead = row(p.Body, -10, 34)
+		UI.Label(bHead, string.format("🎯 LIVE HUNTER BOUNTIES  —  Auto-pays Lucky Spins, Essence & Cores!  (%d Cleared)", (data.Stats and data.Stats.BountiesDone) or 0),
+			UDim2.new(1, -24, 1, 0), UDim2.fromOffset(14, 0), 15, C(110, 245, 175), UI.Display, { TextXAlignment = Enum.TextXAlignment.Left })
+		local poolMap = {}
+		for _, def in ipairs(Config.Bounties.Pool) do poolMap[def.Id] = def end
+		for i, b in ipairs(bounties) do
+			local def = poolMap[b.Id]
+			if def then
+				local bf = row(p.Body, -10 + i, 60)
+				local prog = math.min(b.Target or 1, b.Progress or 0)
+				local frac = math.clamp(prog / math.max(1, b.Target or 1), 0, 1)
+				UI.Label(bf, string.format("🎯  " .. def.Text, b.Target or 1), UDim2.new(0.62, -16, 0, 24), UDim2.fromOffset(14, 6), 15, Config.UI.Text, UI.Display, { TextXAlignment = Enum.TextXAlignment.Left })
+				UI.Label(bf, string.format("%d / %d", prog, b.Target or 1), UDim2.new(0.36, -16, 0, 24), UDim2.new(0.64, 0, 0, 6), 14, C(255, 215, 95), UI.Display, { TextXAlignment = Enum.TextXAlignment.Right })
+				local bar = Instance.new("Frame", bf); bar.Position = UDim2.fromOffset(14, 34); bar.Size = UDim2.new(1, -28, 0, 14)
+				bar.BackgroundColor3 = C(12, 14, 22); bar.BorderSizePixel = 0; Instance.new("UICorner", bar).CornerRadius = UDim.new(0, 6)
+				local fill = Instance.new("Frame", bar); fill.Size = UDim2.fromScale(frac, 1); fill.BackgroundColor3 = C(62, 218, 132); fill.BorderSizePixel = 0
+				Instance.new("UICorner", fill).CornerRadius = UDim.new(0, 6)
+			end
+		end
+	end
+
 	-- 0) WORLD 2 COSMIC PORTAL STATUS (UNLOCKED AT REBIRTH 10)
 	local w2Req = Config.Rebirth.World2RebirthRequired or 10
 	local w2Unlocked = reb >= w2Req
@@ -885,6 +909,7 @@ end
 local lastPackFloat = 0
 function Ctl.Start()
 	local Cut = require(script.Parent.CutsceneController)
+local AnimeFX = require(script.Parent.AnimeFX)
 	UI.JuiceAll(gui)
 	-- responsive: scale the whole HUD with the viewport (phones -> ~0.6, 1080p -> 1.0+)
 	local cam = workspace.CurrentCamera
@@ -919,6 +944,12 @@ function Ctl.Start()
 		elseif kind == "OpenStation" then if open ~= p then Ctl.Open(p) end
 		elseif kind == "PowerUpFX" then
 			if Cut and Cut.PowerUpFX then task.spawn(Cut.PowerUpFX, p) end
+		elseif kind == "Overdrive" then
+			AnimeFX.StartOverdriveAura(p and p.Duration or Config.Overdrive.Duration)
+			UI.Banner(string.format("🔥 ANIME OVERDRIVE UNLEASHED! x2 LUCK · +50%% SPEED (%ds)", (p and p.Duration) or Config.Overdrive.Duration), C(255, 195, 65), 4.5)
+		elseif kind == "Bounty" then
+			AnimeFX.SFX("BountyClear", 0.9)
+			UI.Toast(string.format("🎯 BOUNTY COMPLETE: %s  ➔  %s", tostring(p and p.Text or ""), tostring(p and p.Reward or "")), C(110, 245, 175))
 		elseif kind == "PackIncome" then
 			if State.Data then
 				State.Data.Coins = p.Coins

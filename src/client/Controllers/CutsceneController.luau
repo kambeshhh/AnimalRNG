@@ -13,6 +13,7 @@ local AnimalData = require(RS.Modules.AnimalData)
 local Net = require(RS.Modules.Net)
 local UI = require(script.Parent.UIUtil)
 local State = require(script.Parent.ClientState)
+local AnimeFX = require(script.Parent.AnimeFX)
 
 local Cut = {}
 local player = Players.LocalPlayer
@@ -376,33 +377,56 @@ local function throwDice3D(batch)
 		task.wait()
 	end
 
-	-- Shatter burst on impact + 3D floating rarity popup at each die landing point
+	-- Shatter burst on impact + 3D anime VFX (Black Flash Crit, Breakthrough, Ground Crater) + floating rarity popup
 	local bestD = dice[batch.BestIndex or 1] or dice[1]
+	local bestR = batch.Results[batch.BestIndex or 1] or batch.Results[1]
 	local shatterPitch = math.clamp(0.85 + (bestD.tierIdx or 1) * 0.035, 0.85, 1.75)
 	sfx(nil, "Chime", 0.65, shatterPitch)
 	sfx(nil, "Pop", 0.58, shatterPitch * 0.95)
+	if bestR and bestR.Crit then
+		local isSuper = bestR.Crit == "Super"
+		local critCol = isSuper and C(255, 210, 65) or C(255, 65, 95)
+		AnimeFX.SFX(isSuper and "SuperCrit" or "BlackFlash", 1.0)
+		AnimeFX.LightningBurst(bestD.p1 + Vector3.new(0, 1.2, 0), isSuper and 14 or 10, isSuper and 8 or 5, critCol, true, 0.34)
+		AnimeFX.SlashWaves(bestD.p1 + Vector3.new(0, 1, 0), critCol, isSuper and 3 or 2, isSuper and 14 or 10)
+		if isSuper then AnimeFX.MangaImpactFrame(nil, critCol, fx and fx.Flash) end
+	end
+	if bestR and bestR.Breakthrough then
+		AnimeFX.SFX("Breakthrough", 1.0)
+		AnimeFX.SlashWaves(bestD.p1 + Vector3.new(0, 1.2, 0), bestD.col, 3, 15)
+		AnimeFX.LightningBurst(bestD.p1 + Vector3.new(0, 1.2, 0), 12, 6, bestD.col, false, 0.32)
+	end
+	if (bestD.tierIdx or 1) >= 7 then
+		AnimeFX.SFX("CraterImpact", 0.75)
+		AnimeFX.Crater(bestD.p1, 7 + math.min(8, (bestD.tierIdx or 7) * 0.4), 10, bestD.col, 1.1)
+	end
 	for i, d in ipairs(dice) do
 		local r = batch.Results[i]
 		burstAt(J, d.p1, (d.tierIdx >= 25 or dieCfg.Rainbow) and RAINBOW or d.col, d.best and 48 or 24, d.best and 24 or 15)
 		shockwave(J, d.p1 - Vector3.new(0, 0.8, 0), d.col, d.best and 15 or 9, 0.52)
 		d.part.Transparency = 1
 		if r then
-			local bb = Instance.new("BillboardGui"); bb.Size = UDim2.fromOffset(d.best and 210 or 160, d.best and 56 or 42)
+			local bb = Instance.new("BillboardGui"); bb.Size = UDim2.fromOffset(d.best and 230 or 165, d.best and 66 or 44)
 			bb.StudsOffsetWorldSpace = Vector3.new(0, 1.5, 0); bb.AlwaysOnTop = true; bb.LightInfluence = 0
 			local anchor = Instance.new("Part"); anchor.Anchored = true; anchor.CanCollide = false; anchor.CanQuery = false; anchor.CanTouch = false
 			anchor.Transparency = 1; anchor.Size = Vector3.new(0.2, 0.2, 0.2); anchor.Position = d.p1; anchor.Parent = workspace; J:add(anchor)
 			bb.Adornee = anchor
 			local lbl = Instance.new("TextLabel"); lbl.Size = UDim2.fromScale(1, 1); lbl.BackgroundTransparency = 1
 			lbl.FontFace = UI.Theme.Fonts.Black; lbl.TextScaled = true; lbl.RichText = true
-			lbl.Text = string.format("%s\n<font size='13' color='#FFD166'>%s</font>", r.Name, AnimalData.FormatRarityShort(r.Rarity))
+			local tagLine = ""
+			if r.Crit then tagLine = (r.Crit == "Super" and "<font color='#FFD166'>⚡ SUPER CRIT x5</font>  " or "<font color='#FF4D6D'>⚡ CRIT x2.5</font>  ") end
+			if r.Breakthrough then tagLine ..= "<font color='#67E8F9'>⚡ BREAKTHROUGH</font>" end
+			lbl.Text = string.format("%s%s\n<font size='13' color='#FFD166'>%s</font>",
+				tagLine ~= "" and (tagLine .. "\n") or "",
+				r.Name, AnimalData.FormatRarityShort(r.Rarity))
 			lbl.TextColor3 = d.col; lbl.Parent = bb
 			local st = Instance.new("UIStroke"); st.Thickness = 2.5; st.Color = C(8, 10, 22); st.Parent = lbl
 			bb.Parent = player:WaitForChild("PlayerGui"); J:add(bb)
-			tw(bb, { StudsOffsetWorldSpace = Vector3.new(0, 5.2, 0) }, 0.68, Enum.EasingStyle.Back)
-			task.delay(0.45, function() if lbl.Parent then tw(lbl, { TextTransparency = 1 }, 0.25); tw(st, { Transparency = 1 }, 0.25) end end)
+			tw(bb, { StudsOffsetWorldSpace = Vector3.new(0, 5.4, 0) }, 0.72, Enum.EasingStyle.Back)
+			task.delay(0.48, function() if lbl.Parent then tw(lbl, { TextTransparency = 1 }, 0.25); tw(st, { Transparency = 1 }, 0.25) end end)
 		end
 	end
-	task.delay(0.75, function() J:clean() end)
+	task.delay(0.8, function() J:clean() end)
 end
 
 -- World Power-Up VFX & multi-harmonic SFX for Rebirth, Dice Unlock, Skill Upgrade & Code Redemption
@@ -448,7 +472,11 @@ end
 local function oddsLine(r)
 	local dieCfg = r.Die and Config.Dice.Types[r.Die]
 	local dieTag = (dieCfg and r.Die ~= "Wooden") and ("  •  " .. dieCfg.Icon .. " " .. dieCfg.Display) or ""
-	return string.format("%s  •  %s%s%s%s%s%s", AnimalData.FormatRarity(r.Rarity), r.Tier, dieTag,
+	local critTag = r.Crit and (r.Crit == "Super" and "  •  <font color='#FFD166'>⚡ SUPER CRIT x5</font>" or "  •  <font color='#FF4D6D'>⚡ CRIT x2.5</font>") or ""
+	local btTag = r.Breakthrough and "  •  <font color='#67E8F9'>⚡ BREAKTHROUGH</font>" or ""
+	local resTag = r.Resonance and "  •  <font color='#A78BFA'>BIOME RESONANCE +50%</font>" or ""
+	return string.format("%s  •  %s%s%s%s%s%s%s%s%s", AnimalData.FormatRarity(r.Rarity), r.Tier, dieTag,
+		critTag, btTag, resTag,
 		r.Elixir and "  •  ELIXIR" or "",
 		r.LuckySpin and "  •  <font color='#28D2FF'>🎰 LUCKY SPIN</font>" or "",
 		r.Bonus and "  •  <font color='#FFD166'>★ BONUS</font>" or "",
@@ -575,7 +603,7 @@ end
 local function runProfile(r, P, J)
 	local col = tierColor(r.TierIndex)
 	local rainbow = r.TierIndex >= 25
-	-- 1) ANTICIPATION
+	-- 1) ANTICIPATION (anime speedlines + tension riser + crackling anticipation lightning)
 	if P.Vignette then vignette(J, P.Vignette, math.max(0.15, P.Build)) end
 	if P.Grade then grade(J, P.Grade, col, P.Build) end
 	if P.Blur then blur(J, P.Blur, P.Build) end
@@ -586,14 +614,36 @@ local function runProfile(r, P, J)
 	if P.Card == "star" then starOpen(J, r, col, rainbow, P.Build) end
 	if P.Ghost then ghost(J, r, math.max(0.6, P.Build + 0.1)) end
 	if P.BuildSfx then sfx(J, P.BuildSfx[1], P.BuildSfx[2], P.BuildSfx[3]) end
+	if r.TierIndex >= 7 then
+		AnimeFX.Speedlines(J, fx.Center, col, P.Build + 0.5, 20 + math.min(18, r.TierIndex))
+		AnimeFX.SFX("TensionRiser", 0.78)
+	end
+	if r.TierIndex >= 13 then
+		task.spawn(function()
+			local tEnd = os.clock() + P.Build
+			while not J.dead and os.clock() < tEnd do
+				local rp = rootPart()
+				if rp then
+					local p0 = rp.Position + Vector3.new(math.random(-7, 7), math.random(0, 8), math.random(-7, 7))
+					local p1 = rp.Position + Vector3.new(math.random(-9, 9), math.random(-1, 10), math.random(-9, 9))
+					AnimeFX.LightningBolt(p0, p1, col, { segments = 5, jitter = 1.6, duration = 0.2, width = 0.55, blackFlash = r.TierIndex >= 16 })
+				end
+				task.wait(0.18)
+			end
+		end)
+	end
 	for i = 1, P.Riser or 0 do
 		task.delay((i - 1) * P.Build / P.Riser, function() if not J.dead then sfx(J, "Rise", 0.65, 0.7 + i * 0.18) end end)
 	end
 	if P.Build >= 1 then shake(J, (P.Shake or 0) * 0.2, P.Build) end
 	J:wait(P.Build)
-	-- 2) IMPACT
+	-- 2) IMPACT (Manga B&W Silhouette Impact Frame + 3D Crater + Slash Waves + Lightning Burst + Domain Sphere)
 	if r.TierIndex >= 16 then
+		AnimeFX.MangaImpactFrame(J, col, fx.Flash)
+		AnimeFX.SFX("DomainDrop", 1.0)
+	elseif r.TierIndex >= 10 then
 		impactFrame(J, col:Lerp(WHITE, 0.5))
+		AnimeFX.SFX("AnimeSlash", 0.9)
 	else
 		flash(P.Flash, col:Lerp(WHITE, 0.5))
 	end
@@ -613,6 +663,17 @@ local function runProfile(r, P, J)
 	if root then
 		local pos = root.Position
 		if P.Shock then shockwave(J, pos - Vector3.new(0, 2.5, 0), col, P.Shock, 0.9) end
+		if r.TierIndex >= 10 then
+			AnimeFX.Crater(pos, 10 + math.min(14, r.TierIndex * 0.55), 12 + math.min(6, math.floor(r.TierIndex / 4)), col, 1.45)
+			AnimeFX.SFX("CraterImpact", 0.85)
+			AnimeFX.SlashWaves(pos + Vector3.new(0, 3, 0), col, r.TierIndex >= 16 and 4 or 2, 16 + r.TierIndex * 0.7)
+		end
+		if r.TierIndex >= 13 then
+			AnimeFX.LightningBurst(pos + Vector3.new(0, 3, 0), 14 + r.TierIndex * 0.4, 8, col, r.TierIndex >= 18 or r.Crit ~= nil, 0.4)
+		end
+		if r.TierIndex >= 16 then
+			AnimeFX.DomainSphere(J, pos + Vector3.new(0, 2, 0), col, 28 + r.TierIndex, 1.55, rainbow)
+		end
 		for i = 1, P.Bursts or 0 do
 			task.delay((i - 1) * 0.25, function() if not J.dead and root.Parent then burstAt(J, root.Position, rainbow and RAINBOW or col, P.Burst, 22 + i * 6) end end)
 		end
@@ -645,10 +706,12 @@ local function unattainable(r, J)
 	for i = 1, 2 do
 		sfx(J, "Bass", 0.8, 0.4)
 		sfx(J, "Low", 0.85, 0.42 + i * 0.08)
+		AnimeFX.SFX("Heartbeat", 1.0)
 		shake(J, 0.55 * i, 0.45)
 		J:wait(0.68)
 	end
 	sfx(J, "Rise", 0.8, 0.75)
+	AnimeFX.SFX("TensionRiser", 1.0)
 	J:wait(0.25)
 	-- B) FAKE-OUT: appears to resolve as Primordial
 	local fake = AnimalData.Tiers[TOP - 1]
@@ -659,6 +722,7 @@ local function unattainable(r, J)
 	J:wait(0.75)
 	-- C) glitch + second build
 	sfx(J, "Rise", 0.75, 1.1); sfx(J, "Low", 0.5, 0.45)
+	AnimeFX.Speedlines(J, fx.Center, WHITE, 2.8, 36)
 	tw(un, { BackgroundTransparency = 0.04 }, 0.6)
 	grade(J, { Contrast = 0.7, Saturation = -1, Brightness = -0.15 }, WHITE, 0.6)
 	local g0 = os.clock()
@@ -672,8 +736,9 @@ local function unattainable(r, J)
 	J:wait(0.9)
 	glitch:Disconnect(); title.Position = basePos; title.TextTransparency = 1; sub.TextTransparency = 1
 	J:wait(0.25)
-	-- D) TRUE CLIMAX + WHITEOUT IMPACT FRAME + SUB-BASS DROP
-	impactFrame(J, WHITE)
+	-- D) TRUE CLIMAX + MANGA IMPACT FRAME + DOMAIN EXPANSION + SUB-BASS DROP
+	AnimeFX.MangaImpactFrame(J, WHITE, un.Flash)
+	AnimeFX.SFX("DomainDrop", 1.15)
 	un.Flash.BackgroundTransparency = 0; tw(un.Flash, { BackgroundTransparency = 1 }, 1.4)
 	title.Text = "UNATTAINABLE"; title.TextColor3 = WHITE; title.Rainbow.Enabled = true; title.TextTransparency = 0
 	do local ts = title:FindFirstChildOfClass("UIStroke"); if ts then ts.Transparency = 0 end end
@@ -692,6 +757,10 @@ local function unattainable(r, J)
 	local root = rootPart()
 	if root then
 		local pos = root.Position
+		AnimeFX.DomainSphere(J, pos + Vector3.new(0, 3, 0), WHITE, 64, 2.4, true)
+		AnimeFX.Crater(pos, 22, 18, WHITE, 2.5)
+		AnimeFX.LightningBurst(pos + Vector3.new(0, 4, 0), 26, 10, WHITE, true, 0.55)
+		AnimeFX.SlashWaves(pos + Vector3.new(0, 4, 0), WHITE, 5, 36)
 		for i = 0, 2 do
 			task.delay(i * 0.35, function()
 				if J.dead or not root.Parent then return end

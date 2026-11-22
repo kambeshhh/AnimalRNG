@@ -276,6 +276,84 @@ Config.Sounds = {
 	Low    = "rbxassetid://120971850259619", -- AnimalRNG_SubBassDrop_SFX (Unattainable build-up sub-bass)
 }
 
+-- Built-in Roblox sounds (ship with the client: zero upload/permission failures). Every id here was verified
+-- with ContentProvider:PreloadAsync on a live server (AssetFetchStatus.Success). Layered + DSP'd by AnimeFX.
+Config.AnimeSounds = {
+	Slash    = "rbxasset://sounds/swordslash.wav",
+	Lunge    = "rbxasset://sounds/swordlunge.wav",
+	Unsheath = "rbxasset://sounds/unsheath.wav",
+	Ping     = "rbxasset://sounds/electronicpingshort.wav",
+	Boom     = "rbxasset://sounds/collide.wav",
+	Shot     = "rbxasset://sounds/Rocket shot.wav",
+	Whoosh   = "rbxasset://sounds/Rocket whoosh 01.wav",
+	Launch   = "rbxasset://sounds/Launching rocket.wav",
+	Glass    = "rbxasset://sounds/glassbreak.wav",
+	Hit      = "rbxasset://sounds/hit.wav",
+	Snap     = "rbxasset://sounds/snap.wav",
+	Click    = "rbxasset://sounds/clickfast.wav",
+	Land     = "rbxasset://sounds/action_jump_land.mp3",
+	Wind     = "rbxasset://sounds/action_falling.mp3",
+	Splash   = "rbxasset://sounds/impact_water.mp3",
+	Bass     = "rbxasset://sounds/bass.wav",
+	Thunder  = "rbxassetid://9125402735",
+	Rumble   = "rbxassetid://9038652624",
+	Stinger  = "rbxassetid://15675043410",
+}
+
+-- Built-in particle textures (verified on a live server)
+Config.BuiltinTextures = {
+	Spark     = "rbxasset://textures/particles/sparkles_main.dds",
+	Smoke     = "rbxasset://textures/particles/smoke_main.dds",
+	Fire      = "rbxasset://textures/particles/fire_main.dds",
+	FireSpark = "rbxasset://textures/particles/fire_sparks_main.dds",
+	Core      = "rbxasset://textures/particles/explosion01_core_main.dds",
+	Shock     = "rbxasset://textures/particles/explosion01_shockwave_main.dds",
+	Implode   = "rbxasset://textures/particles/explosion01_implosion_main.dds",
+	Dust      = "rbxasset://textures/particles/explosion01_smoke_main.dds",
+	Glow      = "rbxasset://textures/particles/forcefield_glow_main.dds",
+	Vortex    = "rbxasset://textures/particles/forcefield_vortex_main.dds",
+}
+
+------------------------------------------------------------------ V6 "Hype" systems (active gameplay layer)
+-- ANIME OVERDRIVE: every roll charges the gauge; at 100% the player unleashes 20s of x2 luck & +50% roll speed.
+Config.Overdrive = {
+	Max = 100,
+	PerRoll = 4,          -- every roll
+	PerEpic = 10,         -- Tier 5 (Epic)+ pull
+	PerBonus = 6,         -- Bonus Roll
+	PerCrit = 8,          -- Critical Roll
+	Duration = 20,        -- seconds
+	LuckMult = 2,         -- x2 total luck (free, outside the paid cap)
+	SpeedMult = 1.5,      -- +50% roll speed
+	CritBonus = 0.06,     -- +6% crit chance while active
+	BreakthroughBonus = 0.03,
+}
+
+-- CRITICAL ROLL ("Black Flash"): any throw can crit for x2.5 luck on that roll; 1 in 8 crits is a SUPER crit (x5).
+Config.Crit = { Base = 0.04, PerDie = 0.006, Mult = 2.5, SuperChance = 0.125, SuperMult = 5 }
+
+-- BREAKTHROUGH: a landed pull can shatter its ceiling and climb +1 tier (never into the Tier 27/28 finale).
+Config.Breakthrough = { Chance = 0.02, MaxFromTier = 26, EssenceMult = 0.5 }
+
+-- BIOME RESONANCE: pulls of the current weather's featured creatures pay +50% bonus coins.
+Config.Resonance = { CoinBonus = 0.5 }
+
+-- HUNTER BOUNTIES: 3 live short-term goals; finishing one auto-pays and rolls a fresh bounty in that slot.
+Config.Bounties = {
+	Slots = 3,
+	ScaleMult = { 1, 2, 3.5 }, -- reward multiplier by target size
+	Pool = {
+		{ Id = "Roll",     Stat = "Rolls",         Targets = { 30, 75, 150 }, Text = "Roll %d times",                     Reward = { Coins = 600, Essence = 40 } },
+		{ Id = "Epic",     Stat = "Epic",          Targets = { 3, 8, 15 },    Text = "Pull %d Epic+ (T5+) creatures",     Reward = { Essence = 120, LuckySpins = 1 } },
+		{ Id = "Mythic",   Stat = "Mythic",        Targets = { 1, 2, 4 },     Text = "Pull %d Mythical+ (T7+) creatures", Reward = { LuckySpins = 2, Essence = 200 } },
+		{ Id = "Crit",     Stat = "Crits",         Targets = { 3, 7, 14 },    Text = "Land %d Critical Rolls",            Reward = { Potion = "Lucky", Amount = 1, Coins = 400 } },
+		{ Id = "Break",    Stat = "Breakthroughs", Targets = { 1, 2, 4 },     Text = "Trigger %d Breakthroughs",          Reward = { LuckySpins = 2, Materials = { EclipseDust = 2 } } },
+		{ Id = "Overdrive",Stat = "Overdrives",    Targets = { 1, 2, 3 },     Text = "Unleash Overdrive %d time(s)",      Reward = { Essence = 250, Materials = { FrostCore = 2, MagmaHeart = 2 } } },
+		{ Id = "Index",    Stat = "NewIndex",      Targets = { 2, 5, 10 },    Text = "Discover %d new Index entries",     Reward = { Coins = 1500, LuckySpins = 1 } },
+		{ Id = "Resonate", Stat = "Resonance",     Targets = { 2, 5, 10 },    Text = "Pull %d Biome-Resonant creatures",  Reward = { Materials = { FrostCore = 2, MagmaHeart = 2, EclipseDust = 1 }, Coins = 800 } },
+	},
+}
+
 Config.UI = {
 	Slate = C(14, 17, 25), Glass = 0.2, Text = C(244, 246, 251), Muted = C(154, 163, 184),
 	Accent = C(34, 227, 255), Gold = C(255, 200, 61),

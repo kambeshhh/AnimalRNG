@@ -50,7 +50,8 @@ function Roll.GetLuck(player)
 	paid = math.min(paid, Config.Monetization.PaidLuckCap)
 	local infinitePaid = data.InfinitePaidLuck or 0
 	local event = Roll.EventMult()
-	return (additive + infinitePaid) * rebirthMult * paid * event, add, mult, paid, event, rebirthMult, infinitePaid
+	local overdrive = (S.HypeService and S.HypeService.OverdriveActive(player)) and Config.Overdrive.LuckMult or 1
+	return (additive + infinitePaid) * rebirthMult * paid * event * overdrive, add, mult, paid, event, rebirthMult, infinitePaid, overdrive
 end
 
 function Roll.CanQuick(player)
@@ -78,6 +79,7 @@ function Roll.GetCooldown(player, quick, multi)
 		speed *= 1 + ts + skillSpd
 		if quick and Roll.CanQuick(player) then speed *= Config.Roll.QuickRollSpeedMult end
 		speed *= S.MonetizationService.SpeedMult(player)
+		if S.HypeService and S.HypeService.OverdriveActive(player) then speed *= Config.Overdrive.SpeedMult end
 	end
 	return Config.Roll.BaseCooldown / speed * (multi and Config.Roll.MultiCooldownMult or 1)
 end
@@ -89,13 +91,23 @@ end
 
 -- one roll through the full pipeline. force = { Tier, Mutation, Animal } for admin/test rolls
 local function doRoll(player, data, luck, extra, force)
+	local H = S.HypeService
 	local cycle = Roll.BonusEvery(data)
 	data.Stats.BonusCounter = (data.Stats.BonusCounter or 0) + 1
 	local bonus = data.Stats.BonusCounter >= cycle
 	if bonus then data.Stats.BonusCounter = 0 end
-	local rollLuck = luck * (bonus and Config.Roll.BonusLuckMult or 1) + (extra or 0)
+	-- CRITICAL ROLL ("Black Flash"): multiplies this single throw's luck
+	local critMult, crit = 1, nil
+	if not force and H then critMult, crit = H.RollCrit(player, data) end
+	local rollLuck = luck * (bonus and Config.Roll.BonusLuckMult or 1) * critMult + (extra or 0)
 	local roll = AnimalData.Roll(rollLuck, S.WeatherService.Boosts(), rng, Config.Luck.MutationLuckExponent, force)
+	-- BREAKTHROUGH: the landed pull climbs +1 tier
+	local fromTier = roll.Tier
+	local breakthrough = (not force and H) and H.TryBreakthrough(player, roll) or false
+	local resonance = H and H.IsResonant(roll.Animal) or false
 	data.Stats.Rolls += 1
+	if crit then data.Stats.Crits = (data.Stats.Crits or 0) + 1 end
+	if breakthrough then data.Stats.Breakthroughs = (data.Stats.Breakthroughs or 0) + 1 end
 	-- Free Streak Luck: every 100 rolls without Epic (Tier 5) or better grants permanent +2% luck, capped at +50%
 	if (roll.Tier or 1) >= (Config.Luck.StreakResetTier or 5) then
 		data.Stats.UnluckyStreak = 0
@@ -110,11 +122,24 @@ local function doRoll(player, data, luck, extra, force)
 	local isNew = #newIndex > 0
 	local status, item, coins, essence = S.DataService.AddRolled(player, roll, isNew)
 	local rarity = AnimalData.ItemRarity(item)
+	-- Hype payouts (always paid, even when the creature is kept)
+	local bonusCoins, bonusEssence = 0, 0
+	if resonance then bonusCoins = math.floor(Config.SellValue(rarity) * S.DataService.CoinMult(data) * Config.Resonance.CoinBonus) end
+	if breakthrough then bonusEssence = math.max(5, math.floor(rarity ^ 0.5 * Config.Breakthrough.EssenceMult)) end
+	data.Coins += bonusCoins
+	data.Essence = (data.Essence or 0) + bonusEssence
 	if rarity > data.Stats.RarestPull then data.Stats.RarestPull = rarity; data.Stats.RarestName = AnimalData.ItemName(item) end
 	local tier = AnimalData.TierFor(item)
-	return { Item = item, Name = AnimalData.ItemName(item), Rarity = rarity, Tier = tier.Name, TierIndex = item.Tier,
-		Mutation = item.Mutation, Status = status, Coins = coins, Essence = essence or 0, NewIndex = isNew, Luck = rollLuck, Bonus = bonus,
-		Die = data.EquippedDie or "Wooden" }
+	local r = { Item = item, Name = AnimalData.ItemName(item), Rarity = rarity, Tier = tier.Name, TierIndex = item.Tier,
+		Mutation = item.Mutation, Status = status, Coins = (coins or 0) + bonusCoins, Essence = (essence or 0) + bonusEssence, NewIndex = isNew, Luck = rollLuck, Bonus = bonus,
+		Die = data.EquippedDie or "Wooden",
+		Crit = crit, CritMult = critMult, Breakthrough = breakthrough, FromTier = fromTier, FromTierName = AnimalData.Tiers[fromTier] and AnimalData.Tiers[fromTier].Name or nil,
+		Resonance = resonance, BonusCoins = bonusCoins, Overdrive = H and H.OverdriveActive(player) or false }
+	if H then
+		H.ChargeOverdrive(player, data, r)
+		H.TrackRoll(player, data, r)
+	end
+	return r
 end
 
 local function announce(player, best)
@@ -195,10 +220,10 @@ function Roll.Start()
 			for _, p in ipairs(Players:GetPlayers()) do
 				local data = S.DataService.Get(p)
 				if data then
-					local luck, add, mult, paid, event, rebirthMult = Roll.GetLuck(p)
+					local luck, add, mult, paid, event, rebirthMult, _, overdrive = Roll.GetLuck(p)
 					local cycle = Roll.BonusEvery(data)
 					p:SetAttribute("Luck", luck)
-					p:SetAttribute("LuckBreakdown", HttpService:JSONEncode({ Add = add, Mult = mult, PaidTotal = paid, Event = event, RebirthMult = rebirthMult, Total = luck }))
+					p:SetAttribute("LuckBreakdown", HttpService:JSONEncode({ Add = add, Mult = mult, PaidTotal = paid, Event = event, RebirthMult = rebirthMult, Overdrive = overdrive, Total = luck }))
 					p:SetAttribute("RollCooldown", Roll.GetCooldown(p, false))
 					p:SetAttribute("RollCooldownQuick", Roll.GetCooldown(p, true))
 					p:SetAttribute("RollCooldownMulti", Roll.GetCooldown(p, false, true))
