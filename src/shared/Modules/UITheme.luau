@@ -32,14 +32,14 @@ local function safeFont(enumItem, weight)
 		local base = Font.fromEnum(enumItem)
 		return weight and Font.new(base.Family, weight) or base
 	end)
-	return (ok and f) or Font.new(MONT, weight or Enum.FontWeight.Black)
+	return (ok and f) or Font.new(MONT, weight or Enum.FontWeight.Heavy)
 end
 local FRED = safeFont(Enum.Font.FredokaOne, nil)
 local SARP = safeFont(Enum.Font.Sarpanch, Enum.FontWeight.ExtraBold)
 local MONO = safeFont(Enum.Font.RobotoMono, Enum.FontWeight.Bold)
 
 T.Fonts = {
-	Black    = Font.new(MONT, Enum.FontWeight.Black),
+	Black    = Font.new(MONT, Enum.FontWeight.Heavy),
 	Bold     = Font.new(MONT, Enum.FontWeight.Bold),
 	SemiBold = Font.new(MONT, Enum.FontWeight.SemiBold),
 	Medium   = Font.new(MONT, Enum.FontWeight.Medium),
